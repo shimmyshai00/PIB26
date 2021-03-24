@@ -53,9 +53,15 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 			std::size_t half(len >> 1);
 			std::size_t full(len);
 
+			// Modest improvement: compute the primitive root only, then derive the others by powering
+			// it.
+			// Compute the primitive cosine as 1 - cos, which keeps more precision; also do it in
+			// terms of sine via the half-angle trig identity for just that reason.
+			double w0Cos = sin(-M_PI / full); w0Cos = 2.0 * w0Cos * w0Cos;
+			double w0Sin = sin(-2 * M_PI / full);
+			Cplex w { 1, 0 };
+
 			for (std::size_t n = 0; n < half; ++n) {
-				// note: very naive, should precompute and store these factors.
-				Cplex w { cos(-2 * M_PI * n / full), sin(-2 * M_PI * n / full) };
 				Cplex tmp1 = { data[n].r + data[n + half].r, data[n].i + data[n + half].i };
 				Cplex tmp2 = { data[n].r - data[n + half].r, data[n].i - data[n + half].i };
 
@@ -64,6 +70,13 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 
 				data[n + half].r = tmp2.r * w.r - tmp2.i * w.i;
 				data[n + half].i = tmp2.r * w.i + tmp2.i * w.r;
+
+				// modified multiply because we computed (1 - cos(...)) + i sin(...)
+				tmp1.r = w.r - (w.r * w0Cos + w.i * w0Sin);
+				tmp1.i = w.i - (-w.r * w0Sin + w.i * w0Cos);
+
+				w.r = tmp1.r;
+				w.i = tmp1.i;
 			}
 
 			doFwdTransform(data, half);
@@ -96,9 +109,11 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 			doRevTransform(data, half);
 			doRevTransform(data + half, half);
 
+			double w0Cos = sin(M_PI / full); w0Cos = 2.0 * w0Cos * w0Cos;
+			double w0Sin = sin(2 * M_PI / full);
+			Cplex w { 1, 0 };
+
 			for (std::size_t k = 0; k < half; ++k) {
-				// note: very naive, should precompute and store these factors.
-				Cplex w { cos(2 * M_PI * k / full), sin(2 * M_PI * k / full) };
 				Cplex tmp1 { data[k].r, data[k].i };
 				Cplex tmp2 { data[k + half].r * w.r - data[k + half].i * w.i, data[k + half].r * w.i
 					+ data[k + half].i * w.r };
@@ -108,6 +123,12 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 
 				data[k + half].r = tmp1.r - tmp2.r;
 				data[k + half].i = tmp1.i - tmp2.i;
+
+				tmp1.r = w.r - (w.r * w0Cos + w.i * w0Sin);
+				tmp1.i = w.i - (-w.r * w0Sin + w.i * w0Cos);
+
+				w.r = tmp1.r;
+				w.i = tmp1.i;
 			}
 		}
 	}
