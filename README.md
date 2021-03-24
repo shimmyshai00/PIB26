@@ -18,3 +18,9 @@ Current status
 ==============
 
 The current program is in an extremely immature stage - at version 0.0.1 it is still considered mostly a naive program, and doesn't support the base-26 calculation yet - only supporting decimal like other programs. It is very slow by comparison and nowhere near the league of the programs mentioned, taking a full 17.3 seconds to compute 1 million digits (1,000,000) of decimal pi on a decent processor - Core i3-8100, on a single core. But - right now, it works - and thus provides a ready base for continued improvement and optimization. We also invite feedback and contributions as to how it can be made better.
+
+Building
+========
+The program code is an Eclipse project and .mk makefiles.
+
+(more TBA)
