@@ -54,6 +54,26 @@ namespace SDF::Bignum
 		}
 	}
 
+	void BigFloat::usqr(const BigFloat &num, IMultiplicationStrategy &strategy) {
+		m_sign = SIGN_POSITIVE;
+		m_exp = num.m_exp << 1;
+
+		strategy.squareDigits(num.m_digits, num.m_totalLen);
+		std::size_t prodLen(strategy.getProductLength());
+		if (prodLen <= m_totalLen) {
+			// We can store the whole product.
+			strategy.getProductDigits(m_digits + (m_totalLen - prodLen), 0, prodLen);
+			Primitives::zeroize(m_digits, m_totalLen - prodLen);
+		} else {
+			// We can only store the upper part of the product.
+			strategy.getProductDigits(m_digits, prodLen - m_totalLen, m_totalLen);
+		}
+
+		if (prodLen == (num.m_totalLen << 1)) {
+			++m_exp;
+		}
+	}
+
 	void BigFloat::umul(const BigFloat &num1, const BigInt &num2, IMultiplicationStrategy &strategy)
 	{
 		m_sign = SIGN_POSITIVE;

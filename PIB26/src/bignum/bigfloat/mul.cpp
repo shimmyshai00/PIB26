@@ -35,6 +35,10 @@ namespace SDF::Bignum
 		m_sign = static_cast<Sign>(n1Sign * n2Sign);
 	}
 
+	void BigFloat::sqr(const BigFloat &num, IMultiplicationStrategy &strategy) {
+		usqr(num, strategy);
+	}
+
 	void BigFloat::mul(const BigFloat &num1, const BigInt &num2, IMultiplicationStrategy &strategy)
 	{
 		Sign n1Sign(num1.m_sign), n2Sign(num2.m_sign);

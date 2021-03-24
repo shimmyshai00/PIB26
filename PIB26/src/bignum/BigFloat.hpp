@@ -172,6 +172,13 @@ namespace SDF::Bignum
 			// Returns:    None.
 			void mul(const BigFloat &num1, const BigFloat &num2, IMultiplicationStrategy &strategy);
 
+			// Function:   sqr
+			// Purpose:    Squares a BigFloat.
+			// Parameters: num - The operand to square.
+			//             strategy - THe multiplication strategy to use.
+			// Returns:    None.
+			void sqr(const BigFloat &num, IMultiplicationStrategy &strategy);
+
 			// Function:   mul
 			// Purpose:    Multiplies a BigFloat by a BigInt. Note: multiplication always uses a
 			//             separate buffer, so it will also work in-place.
@@ -289,6 +296,7 @@ namespace SDF::Bignum
 			void usubIp(const BigFloat &num);
 
 			void umul(const BigFloat &num1, const BigFloat &num2, IMultiplicationStrategy &strategy);
+			void usqr(const BigFloat &num, IMultiplicationStrategy &strategy);
 			void umul(const BigFloat &num1, const BigInt &num2, IMultiplicationStrategy &strategy);
 			void umul(const BigFloat &num1, unsigned int smallNum);
 

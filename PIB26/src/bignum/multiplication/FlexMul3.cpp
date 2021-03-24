@@ -49,6 +49,20 @@ namespace SDF::Bignum::Multiplication
 		m_lastStrategy->mulDigits(a, aLen, b, bLen);
 	}
 
+	void FlexMul3::squareDigits(Memory::SafePtr<Digit> a, std::size_t aLen) {
+		std::size_t prodLen(aLen << 1);
+
+		if (prodLen < m_overrideLen1) {
+			m_lastStrategy = m_strategy1;
+		} else if (prodLen < m_overrideLen2) {
+			m_lastStrategy = m_strategy2;
+		} else {
+			m_lastStrategy = m_strategy3;
+		}
+
+		m_lastStrategy->squareDigits(a, aLen);
+	}
+
 	std::size_t FlexMul3::getProductLength() const
 	{
 		if (m_lastStrategy != nullptr) {

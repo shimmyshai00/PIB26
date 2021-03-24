@@ -73,6 +73,13 @@ namespace SDF::Bignum::Multiplication
 		}
 	}
 
+	void ClassicalSmallMul::squareDigits(Memory::SafePtr<Digit> a, std::size_t aLen)
+	{
+		// Like the above, except we can do only half the multiplies.
+		// TBA
+		mulDigits(a, aLen, a, aLen);
+	}
+
 	std::size_t ClassicalSmallMul::getProductLength() const
 	{
 		return m_lastProductLength;

@@ -52,6 +52,14 @@ namespace SDF::Bignum
 			virtual void mulDigits(Memory::SafePtr<Digit> a, std::size_t aLen,
 				Memory::SafePtr<Digit> b, std::size_t bLen) = 0;
 
+			// Function:   squareDigits
+			// Purpose:    Square a digit buffer segment. Squaring can often be done more quickly than
+			//             general multiplication.
+			// Parameters: a - The pointer to the digit segment to square.
+			//             aLen - The length of the segment in digits.
+			// Returns:    None.
+			virtual void squareDigits(Memory::SafePtr<Digit> a, std::size_t aLen) = 0;
+
 			// Function:   getProductLength
 			// Purpose:    Get the length of a computed product in digits.
 			// Parameters: None.

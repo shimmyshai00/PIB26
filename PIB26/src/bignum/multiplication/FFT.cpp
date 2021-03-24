@@ -123,6 +123,55 @@ namespace SDF::Bignum::Multiplication
 		}
 	}
 
+	void FFT::squareDigits(Memory::SafePtr<Digit> a, std::size_t aLen)
+	{
+		// We can save an FFT in this case.
+		if ((aLen << 1) > m_maxProdSize) {
+			throw SDF::Exceptions::Exception("Requested FFT multiply of numbers that were too big :(");
+		}
+
+		std::size_t prodSize(aLen << 1);
+		std::size_t pow2Size(1);
+
+		while ((pow2Size << 1) < prodSize) {
+			pow2Size <<= 1;
+		}
+
+		if (prodSize - pow2Size < 2 * THRESHOLD_SMOOTHING) {
+			Memory::SafePtr<Digit> prodPtr(m_productDigits.accessData(0));
+
+			// "Smooth" the performance by multiplying THRESHOLD_SMOOTHING fewer digits using the FFT.
+			std::size_t aTrunc(aLen - THRESHOLD_SMOOTHING);
+			sqrCore(a, aTrunc);
+
+			for (std::size_t i(aTrunc << 1); i < prodSize; ++i) {
+				prodPtr[i] = 0;
+			}
+
+			for (std::size_t i(THRESHOLD_SMOOTHING); i > 0; --i) {
+				aTrunc = aLen - i;
+
+				TwoDigit bigCarry(0);
+				bigCarry = Primitives::mulAdd(prodPtr + aTrunc, prodPtr + aTrunc, a, 2 * a[aTrunc],
+					aTrunc);
+				Primitives::addSmall(prodPtr + aTrunc + aTrunc, prodPtr + aTrunc + aTrunc, bigCarry,
+					prodSize - (aTrunc + aTrunc));
+
+				bigCarry = static_cast<TwoDigit>(a[aTrunc]) * a[aTrunc];
+				Primitives::addSmall(prodPtr + aTrunc + aTrunc, prodPtr + aTrunc + aTrunc, bigCarry,
+					prodSize - (aTrunc + aTrunc));
+			}
+		} else {
+			sqrCore(a, aLen);
+		}
+
+		// Report the product size.
+		m_lastProdLength = prodSize;
+		if (*m_productDigits.accessData(m_lastProdLength - 1) == 0) {
+			--m_lastProdLength;
+		}
+	}
+
 	std::size_t FFT::getProductLength() const
 	{
 		return m_lastProdLength;
@@ -203,6 +252,24 @@ namespace SDF::Bignum::Multiplication
 		m_fft->doRevTransform(num1BufPtr, safeSize);
 
 		// Unspool the result and release the carries.
+		Memory::SafePtr<Digit> resultPtr(m_productDigits.accessData(0));
+		extractProduct(resultPtr, num1BufPtr, safeSize);
+	}
+
+	void FFT::sqrCore(Memory::SafePtr<Digit> a, std::size_t aLen)
+	{
+		// Can save a transform when squaring
+		std::size_t prodSize(aLen << 1);
+		std::size_t safeSize(m_fft->getNearestSafeLengthTo(prodSize));
+
+		Memory::SafePtr<Fft::Complex::Cplex> num1BufPtr(m_num1FFTBuffer.accessData(0));
+
+		loadBuffer(num1BufPtr, safeSize, a, aLen);
+
+		m_fft->doFwdTransform(num1BufPtr, safeSize);
+		convolute(num1BufPtr, num1BufPtr, safeSize);
+		m_fft->doRevTransform(num1BufPtr, safeSize);
+
 		Memory::SafePtr<Digit> resultPtr(m_productDigits.accessData(0));
 		extractProduct(resultPtr, num1BufPtr, safeSize);
 	}

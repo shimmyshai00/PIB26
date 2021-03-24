@@ -61,6 +61,8 @@ namespace SDF::Bignum::Multiplication
 
 			void mulDigits(Memory::SafePtr<Digit> a, std::size_t aLen, Memory::SafePtr<Digit> b,
 				std::size_t bLen);
+			void squareDigits(Memory::SafePtr<Digit> a, std::size_t aLen);
+
 
 			std::size_t getProductLength() const;
 
@@ -89,6 +91,7 @@ namespace SDF::Bignum::Multiplication
 
 			void mulCore(Memory::SafePtr<Digit> a, std::size_t aLen, Memory::SafePtr<Digit> b,
 				std::size_t bLen);
+			void sqrCore(Memory::SafePtr<Digit> a, std::size_t aLen);
 	};
 }
 

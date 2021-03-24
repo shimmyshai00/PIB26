@@ -92,7 +92,7 @@ namespace SDF::Bignum
 			//
 			// where the squaring can then be done with half precision inputs, in addition to that
 			// squarings are easier with some multiplication algorithms.
-			tmpValReduced.mul(*this, *this, strategy); // does mul at previous prec
+			tmpValReduced.sqr(*this, strategy); // does mul at previous prec
 			resize(prec); // upgrade to full prec
 
 			tmpValReduced.mul(aReduced, tmpValReduced, strategy);

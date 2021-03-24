@@ -73,6 +73,12 @@ namespace SDF::Bignum::Multiplication
 		}
 	}
 
+
+	void SmallKaratsuba::squareDigits(Memory::SafePtr<Digit> a, std::size_t aLen) {
+		// TBA
+		mulDigits(a, aLen, a, aLen);
+	}
+
 	std::size_t SmallKaratsuba::getProductLength() const
 	{
 		return m_lastProductLength;

@@ -73,7 +73,7 @@ namespace SDF::Bignum
 		ticker->printTicker();
 
 		for (std::size_t i(0); i < 2 * DIGS_PER_DIG; ++i) {
-			tmpValReduced.mul(*this, *this, strategy); // n.b. could have special squaring method
+			tmpValReduced.sqr(*this, strategy); // n.b. could have special squaring method
 			tmpValReduced.mul(aReduced, *this, strategy);
 			tmpValReduced.subIp(three);
 			tmpValReduced.m_sign = static_cast<Sign>(-m_sign);
@@ -99,7 +99,7 @@ namespace SDF::Bignum
 			ticker->printTicker();
 
 			// again, we can do this mul at half prec
-			tmpValReduced.mul(*this, *this, strategy); // n.b. could have special squaring method
+			tmpValReduced.sqr(*this, strategy); // n.b. could have special squaring method
 			resize(prec);
 
 			tmpValReduced.mul(aReduced, tmpValReduced, strategy);
@@ -151,7 +151,7 @@ namespace SDF::Bignum
 		ticker->printTicker();
 
 		for (std::size_t i(0); i < 2 * DIGS_PER_DIG; ++i) {
-			tmpValReduced.mul(*this, *this, strategy); // n.b. could have special squaring method
+			tmpValReduced.sqr(*this, strategy); // n.b. could have special squaring method
 			tmpValReduced.mulIp(a);
 			tmpValReduced.subIp(three);
 			tmpValReduced.m_sign = static_cast<Sign>(-tmpValReduced.m_sign);
@@ -175,7 +175,7 @@ namespace SDF::Bignum
 			ticker->setTickerCur(prec * DIGS_PER_DIG);
 			ticker->printTicker();
 
-			tmpValReduced.mul(*this, *this, strategy); // n.b. could have special squaring method
+			tmpValReduced.sqr(*this, strategy); // n.b. could have special squaring method
 			resize(prec);
 
 			tmpValReduced.mulIp(a);
