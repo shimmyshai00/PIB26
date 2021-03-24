@@ -76,7 +76,6 @@ namespace SDF::Bignum
 				prec = origPrec;
 			}
 
-			resize(prec);
 			aReduced = a.aliasTruncate(prec);
 			tmpValReduced = tmpVal.aliasTruncate(prec);
 
@@ -87,10 +86,18 @@ namespace SDF::Bignum
 			ticker->setTickerCur(prec * DIGS_PER_DIG);
 			ticker->printTicker();
 
-			tmpValReduced.mul(aReduced, *this, strategy);
-			tmpValReduced.subIp(two);
-			tmpValReduced.m_sign = static_cast<Sign>(-tmpValReduced.m_sign);
-			mul(*this, tmpValReduced, strategy);
+			// We can make this computation more efficient by computing it as instead
+			//
+			//     x_(n+1) = 2 x_n - a (x_n^2)
+			//
+			// where the squaring can then be done with half precision inputs, in addition to that
+			// squarings are easier with some multiplication algorithms.
+			tmpValReduced.mul(*this, *this, strategy); // does mul at previous prec
+			resize(prec); // upgrade to full prec
+
+			tmpValReduced.mul(aReduced, tmpValReduced, strategy);
+			mulIp(2);
+			subIp(tmpValReduced);
 		} while (prec < origPrec);
 
 		ticker->finishTicker();

@@ -88,7 +88,6 @@ namespace SDF::Bignum
 				prec = origPrec;
 			}
 
-			resize(prec);
 			aReduced = a.aliasTruncate(prec);
 			tmpValReduced = tmpVal.aliasTruncate(prec);
 
@@ -99,7 +98,10 @@ namespace SDF::Bignum
 			ticker->setTickerCur(prec * DIGS_PER_DIG);
 			ticker->printTicker();
 
+			// again, we can do this mul at half prec
 			tmpValReduced.mul(*this, *this, strategy); // n.b. could have special squaring method
+			resize(prec);
+
 			tmpValReduced.mul(aReduced, tmpValReduced, strategy);
 			tmpValReduced.subIp(three);
 			tmpValReduced.m_sign = static_cast<Sign>(-tmpValReduced.m_sign);
@@ -164,7 +166,6 @@ namespace SDF::Bignum
 				prec = origPrec;
 			}
 
-			resize(prec);
 			tmpValReduced = tmpVal.aliasTruncate(prec);
 
 			// The Newton formula is:
@@ -175,6 +176,8 @@ namespace SDF::Bignum
 			ticker->printTicker();
 
 			tmpValReduced.mul(*this, *this, strategy); // n.b. could have special squaring method
+			resize(prec);
+
 			tmpValReduced.mulIp(a);
 			tmpValReduced.subIp(three);
 			tmpValReduced.m_sign = static_cast<Sign>(-tmpValReduced.m_sign);

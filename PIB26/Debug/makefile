@@ -47,19 +47,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: PIB26-1.0.0-NEO
+all: PIB26
 
 # Tool invocations
-PIB26-1.0.0-NEO: $(OBJS) $(USER_OBJS)
+PIB26: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++  -o "PIB26-1.0.0-NEO" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++  -o "PIB26" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS)$(CXX_DEPS)$(OBJS)$(CPP_DEPS)$(C_DEPS) PIB26-1.0.0-NEO
+	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS)$(CXX_DEPS)$(OBJS)$(CPP_DEPS)$(C_DEPS) PIB26
 	-@echo ' '
 
 .PHONY: all clean dependents
