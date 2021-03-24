@@ -12,7 +12,7 @@ instead of
 
      3.1415926535...
 
-. (Some might find it funny that the first recognizable string in Pi is seen right above as "LOL" ... :D). This author aims to scale up and improve this program to the point where it becomes a first-rate calculator in the same league as popular ones such as Pifast, TachusPI and the legendary Y-Cruncher by Alexander J. Yee - only being fully open source, and ideally with enough commentary and !!!hopefully!!! somewhat readable code so that it may be of use to others seeking to learn how such software works, for the problem of calculating pi to enormous numbers of digits is a good exercise in coding efficiency and a number of cool mathematical algorithms such as the Fast Fourier Transform (FFT) and thus author lamented the lack of such an educational resource in his youth years.
+. (Some might find it funny that the first recognizable string in Pi is seen right above as "LOL" ... :D). This author aims to scale up and improve this program to the point where it becomes a first-rate calculator in the same league as popular ones such as Pifast, TachusPI and the legendary Y-Cruncher by Alexander J. Yee - only being fully open source, and ideally with enough commentary and !!!hopefully!!! somewhat readable code so that it may be of use to others seeking to learn how such software works, for the problem of calculating pi to enormous numbers of digits is a good exercise in coding efficiency and a number of cool mathematical algorithms such as the Fast Fourier Transform (FFT). The author of this program seriously lamented the lack of such an open code as a learning resource in his youth years, and wants this program to be the one to provide such for future generations of computer programmers.
 
 Current status
 ==============
