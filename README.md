@@ -21,6 +21,4 @@ The current program is in an extremely immature stage - at version 0.0.1 it is s
 
 Building
 ========
-The program code is an Eclipse project and .mk makefiles.
-
-(more TBA)
+The program code is an Eclipse project and .mk makefiles, however you do not need Eclipse itself to compile the program (but it is definitely recommended if you want to contribute changes). The program can be compiled on any UNIX-style system with suitable C++ compiler and standard toolchain (e.g. g++ and make) by changing to the "Debug" or "Release" version directory and then running "make". The Debug build is much slower than the Release build, since compiler optimization is not turned on. The timings mentioned are given for the Release version, which is considered the "proper" one to benchmark.
