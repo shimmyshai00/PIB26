@@ -34,7 +34,9 @@
 #include "pi/bsp/chudnovsky.hpp"
 
 #include "util/timer.hpp"
+#include "util/userInput.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -54,19 +56,18 @@ int main(int argc, char **argv)
 		std::cout << "PIB26 version 0.0.1" << std::endl;
 		std::cout << std::endl;
 
-		std::size_t numDigits(0);
-		do {
-			try {
-				std::string input;
-				std::cout << "Enter number of digits to compute (100-1048576): ";
-				std::getline(std::cin, input);
-				numDigits = std::stoi(input);
-			} catch (std::exception &e) {
-				numDigits = 0; // invalid.
-			}
-		} while ((numDigits < 100) || (numDigits > 1048576));
-
+		std::size_t numDigits = Util::getUserNumericInput("Enter number of digits to compute", 100,
+			4000000);
 		std::cout << std::endl;
+
+		/*
+		 bool wantParallel = Util::getUserYNInput("Do you want to use parallel processing");
+		 int numThreads;
+		 if(wantParallel) {
+		 numThreads = Util::getUserNumericInput("Enter number of threads to use", 1, 4);
+		 }
+		 std::cout << std::endl;
+		 */
 
 		struct timespec startTime, endTime;
 
@@ -76,7 +77,8 @@ int main(int argc, char **argv)
 
 		Bignum::Multiplication::ClassicalSmallMul smallStrategy(1024);
 		Bignum::Multiplication::SmallKaratsuba medStrategy(16384);
-		Bignum::Multiplication::FFT largeStrategy(524288);
+		Bignum::Multiplication::FFT largeStrategy(
+			std::max<std::size_t>(16384, 2 * numDigits / Bignum::DIGS_PER_DIG) + 16);
 		Bignum::Multiplication::FlexMul3 flexStrategy(&smallStrategy, &medStrategy, &largeStrategy,
 			128, 2048);
 		Pi::BSP::Chudnovsky chudnovsky(&flexStrategy);

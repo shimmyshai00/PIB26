@@ -2,8 +2,8 @@
  * PIB26 version 0.0.1
  * (C) 2020-2021 Shimrra Shai.
  * 
- * File:      rad2.hpp
- * Timestamp: Mar 23, 2021
+ * File:      ComplexFft.hpp
+ * Timestamp: Mar 24, 2021
  *
  */
 
@@ -21,31 +21,26 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
+#ifndef SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_COMPLEXFFT_HPP_
+#define SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_COMPLEXFFT_HPP_
 
-#ifndef SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_RAD2REC_HPP_
-#define SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_RAD2REC_HPP_
-
-#include "ComplexFft.hpp"
-
-#include "../../../../memory/SafePtr.hpp"
+#include "../IFft.hpp"
 
 #include "Cplex.hpp"
 
-#include <cstddef>
-
-namespace SDF::Bignum::Multiplication::Fft::Complex {
-	// Class:      rad2Rec
-	// Purpose:    Wraps the radix-2 recursive complex FFT.
+namespace SDF::Bignum::Multiplication::Fft::Complex
+{
+	// Class:      ComplexFft
+	// Purpose:    Provides an abstract base for complex FFTs.
 	// Parameters: None.
-	class rad2Rec : public ComplexFft {
+	// Returns:    None.
+	class ComplexFft : public IFft<Cplex>
+	{
 		public:
-			rad2Rec();
+			ComplexFft();
 
-			std::size_t getNearestSafeLengthTo(std::size_t length) const;
-
-			void doFwdTransform(Memory::SafePtr<Cplex> data, std::size_t len);
-			void doRevTransform(Memory::SafePtr<Cplex> data, std::size_t len);
+			std::size_t getMaxNumLengthAtBase(long base) const;
 	};
 }
 
-#endif /* SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_RAD2REC_HPP_ */
+#endif /* SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_COMPLEXFFT_HPP_ */

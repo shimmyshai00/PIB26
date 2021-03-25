@@ -38,6 +38,13 @@ namespace SDF::Bignum::Multiplication::Fft {
 		public:
 			virtual ~IFft() = default;
 
+			// Function:   getMaxNumLengthAtBase
+			// Purpose:    Get the largest allowed number length when packing numbers in a given base.
+			// Parameters: base - The base to use.
+			// Returns:    The maximum length of a number in the given base that won't overflow the
+			//             FFT during multiplication.
+			virtual std::size_t getMaxNumLengthAtBase(long base) const = 0;
+
 			// Function:   getNearestSafeLengthTo
 			// Purpose:    Gets the smallest "safe" length sufficient to transform a given length of
 			//             data. Data should be padded to this length prior to transforming.

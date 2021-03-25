@@ -40,13 +40,14 @@
 namespace SDF::Bignum::Multiplication
 {
 	FFT::FFT(std::size_t maxProdSize)
-		: m_maxProdSize(maxProdSize), m_lastProdLength(0), m_num1FFTBuffer(maxProdSize), m_num2FFTBuffer(
-			maxProdSize), m_fft(new Fft::Complex::rad2Rec)
+		: m_fft(new Fft::Complex::rad2Rec), m_maxProdSize(maxProdSize), m_fftBufferSize(
+			m_fft->getNearestSafeLengthTo(maxProdSize)), m_lastProdLength(0), m_num1FFTBuffer(
+			m_fftBufferSize), m_num2FFTBuffer(m_fftBufferSize)
 	{
 		// Naive method: just pack one digit per FFT element. At a base BASE = 10000, this will
 		// generally fail some time past 1M digits, so to go further with this program, we will need
 		// tweaking here to pack fewer digits per element and suitable buffer sizing.
-		if (maxProdSize * DIGS_PER_DIG > 2097152) {
+		if (m_fftBufferSize > 2 * m_fft->getMaxNumLengthAtBase(BASE)) {
 			// Bad!
 			throw SDF::Exceptions::Exception("Required FFT multiply size too big!");
 		}
@@ -212,11 +213,11 @@ namespace SDF::Bignum::Multiplication
 		}
 	}
 
-	void FFT::extractProduct(Memory::SafePtr<Digit> digitBuffer,
+	void FFT::extractProduct(Memory::SafePtr<Digit> digitBuffer, std::size_t digitsToGet,
 		Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize)
 	{
 		double carry(0);
-		for (std::size_t i(0); i < fftSize; ++i) {
+		for (std::size_t i(0); i < digitsToGet; ++i) {
 			// divide by the FFT size; the FFT leaves the product terms multiplied by it
 			double tmp = floor((fftBuffer[i].r / fftSize) + 0.5f);
 
@@ -253,7 +254,7 @@ namespace SDF::Bignum::Multiplication
 
 		// Unspool the result and release the carries.
 		Memory::SafePtr<Digit> resultPtr(m_productDigits.accessData(0));
-		extractProduct(resultPtr, num1BufPtr, safeSize);
+		extractProduct(resultPtr, prodSize, num1BufPtr, safeSize);
 	}
 
 	void FFT::sqrCore(Memory::SafePtr<Digit> a, std::size_t aLen)
@@ -271,6 +272,6 @@ namespace SDF::Bignum::Multiplication
 		m_fft->doRevTransform(num1BufPtr, safeSize);
 
 		Memory::SafePtr<Digit> resultPtr(m_productDigits.accessData(0));
-		extractProduct(resultPtr, num1BufPtr, safeSize);
+		extractProduct(resultPtr, prodSize, num1BufPtr, safeSize);
 	}
 }

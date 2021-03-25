@@ -63,14 +63,17 @@ namespace SDF::Bignum::Multiplication
 				std::size_t bLen);
 			void squareDigits(Memory::SafePtr<Digit> a, std::size_t aLen);
 
-
 			std::size_t getProductLength() const;
 
 			void getProductDigits(Memory::SafePtr<Digit> dst, std::size_t origin, std::size_t length);
 		private:
 			static const std::size_t THRESHOLD_SMOOTHING = 4;
 
+			// The FFT object itself.
+			std::unique_ptr<Fft::IFft<Fft::Complex::Cplex>> m_fft;
+
 			std::size_t m_maxProdSize;
+			std::size_t m_fftBufferSize;
 			std::size_t m_lastProdLength;
 
 			// Use punning to save storage space
@@ -79,14 +82,11 @@ namespace SDF::Bignum::Multiplication
 			Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex> m_num1FFTBuffer;
 			Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex> m_num2FFTBuffer;
 
-			// The FFT object itself.
-			std::unique_ptr<Fft::IFft<Fft::Complex::Cplex>> m_fft;
-
 			void loadBuffer(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t bufferLen,
 				Memory::SafePtr<Digit> num, std::size_t numLen);
 			void convolute(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer1,
 				Memory::SafePtr<Fft::Complex::Cplex> fftBuffer2, std::size_t bufferLen);
-			void extractProduct(Memory::SafePtr<Digit> digitBuffer,
+			void extractProduct(Memory::SafePtr<Digit> digitBuffer, std::size_t digitsToGet,
 				Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize);
 
 			void mulCore(Memory::SafePtr<Digit> a, std::size_t aLen, Memory::SafePtr<Digit> b,
