@@ -31,6 +31,8 @@
 
 #include "Cplex.hpp"
 
+#include "rad2Itr.hpp"
+
 #include <cstddef>
 
 namespace SDF::Bignum::Multiplication::Fft::Complex {
@@ -45,6 +47,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 
 			void doFwdTransform(Memory::SafePtr<Cplex> data, std::size_t len);
 			void doRevTransform(Memory::SafePtr<Cplex> data, std::size_t len);
+		private:
+			rad2Itr m_iterativeFft;
 	};
 }
 

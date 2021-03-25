@@ -24,11 +24,15 @@
 
 #include "rad2Rec.hpp"
 
+#include "../FFTTweak.hpp"
+
 #include <cmath>
 
 namespace SDF::Bignum::Multiplication::Fft::Complex
 {
 	rad2Rec::rad2Rec()
+		: m_iterativeFft(g_cacheSize / (2 * sizeof(Cplex))) // try to fit whole iterative FFT - table
+	                                                       // and data - into cache
 	{
 	}
 
@@ -47,8 +51,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 	{
 		// The forward transform is done as a decimation-in-frequency (DIF) version.
 		// The DIF version in a sense is just "built backwards" from the DIT version.
-		if (len == 1) {
-			return;
+		if (len < m_iterativeFft.getMaxFftSize()) { // NEW! Switch to iterative for short transforms.
+			m_iterativeFft.doFwdTransform(data, len);
 		} else {
 			std::size_t half(len >> 1);
 			std::size_t full(len);
@@ -57,7 +61,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 			// it.
 			// Compute the primitive cosine as 1 - cos, which keeps more precision; also do it in
 			// terms of sine via the half-angle trig identity for just that reason.
-			double w0Cos = sin(-M_PI / full); w0Cos = 2.0 * w0Cos * w0Cos;
+			double w0Cos = sin(-M_PI / full);
+			w0Cos = 2.0 * w0Cos * w0Cos;
 			double w0Sin = sin(-2 * M_PI / full);
 			Cplex w { 1, 0 };
 
@@ -72,11 +77,18 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 				data[n + half].i = tmp2.r * w.i + tmp2.i * w.r;
 
 				// modified multiply because we computed (1 - cos(...)) + i sin(...)
-				tmp1.r = w.r - (w.r * w0Cos + w.i * w0Sin);
-				tmp1.i = w.i - (-w.r * w0Sin + w.i * w0Cos);
+				// To prevent the build-up of round-off error, recompute "exactly" every so often, but
+				// not at such an interval that will noticeably impair performance.
+				if (n % 1000 == 0) {
+					w.r = cos(-2.0 * M_PI * (n+1) / full);
+					w.i = sin(-2.0 * M_PI * (n+1) / full);
+				} else {
+					tmp1.r = w.r - (w.r * w0Cos + w.i * w0Sin);
+					tmp1.i = w.i - (-w.r * w0Sin + w.i * w0Cos);
 
-				w.r = tmp1.r;
-				w.i = tmp1.i;
+					w.r = tmp1.r;
+					w.i = tmp1.i;
+				}
 			}
 
 			doFwdTransform(data, half);
@@ -92,9 +104,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 		// FFT useless as a frequency analyzer - if one wants to recycle this code in another program
 		// where it has that use, one will need to adapt the implementation or fashion a suitable
 		// frontend that will recursively sort the data.
-		if (len == 1) {
-			// The base case of the recursion is to do nothing.
-			return;
+		if (len < m_iterativeFft.getMaxFftSize()) {
+			m_iterativeFft.doRevTransform(data, len);
 		} else {
 			// Do the recursion:
 			//    X_k =                sum_{m=0...N/2-1} x_{2m} e^(-2piimk/(N/2))
@@ -109,7 +120,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 			doRevTransform(data, half);
 			doRevTransform(data + half, half);
 
-			double w0Cos = sin(M_PI / full); w0Cos = 2.0 * w0Cos * w0Cos;
+			double w0Cos = sin(M_PI / full);
+			w0Cos = 2.0 * w0Cos * w0Cos;
 			double w0Sin = sin(2 * M_PI / full);
 			Cplex w { 1, 0 };
 
@@ -124,11 +136,16 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 				data[k + half].r = tmp1.r - tmp2.r;
 				data[k + half].i = tmp1.i - tmp2.i;
 
-				tmp1.r = w.r - (w.r * w0Cos + w.i * w0Sin);
-				tmp1.i = w.i - (-w.r * w0Sin + w.i * w0Cos);
+				if (k % 1000 == 0) {
+					w.r = cos(2.0 * M_PI * (k+1) / full);
+					w.i = sin(2.0 * M_PI * (k+1) / full);
+				} else {
+					tmp1.r = w.r - (w.r * w0Cos + w.i * w0Sin);
+					tmp1.i = w.i - (-w.r * w0Sin + w.i * w0Cos);
 
-				w.r = tmp1.r;
-				w.i = tmp1.i;
+					w.r = tmp1.r;
+					w.i = tmp1.i;
+				}
 			}
 		}
 	}

@@ -33,9 +33,11 @@
 #include "../primitives/muladd.hpp"
 
 #include <cmath>
+#include <cstdio>
 
-#include <iostream>
-#include <iomanip>
+//#include <iostream>
+//#include <iomanip>
+//#include <fstream>
 
 namespace SDF::Bignum::Multiplication
 {
@@ -219,7 +221,7 @@ namespace SDF::Bignum::Multiplication
 		double carry(0);
 		for (std::size_t i(0); i < digitsToGet; ++i) {
 			// divide by the FFT size; the FFT leaves the product terms multiplied by it
-			double tmp = floor((fftBuffer[i].r / fftSize) + 0.5f);
+			double tmp = floor((fftBuffer[i].r / fftSize) + 0.5);
 
 			// release carries
 			tmp += carry;
