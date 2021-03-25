@@ -19,6 +19,8 @@ Current status
 
 The current program is in an extremely immature stage - at version 0.0.1 it is still considered mostly a naive program, and doesn't support the base-26 calculation yet - only supporting decimal like other programs. It is very slow by comparison and nowhere near the league of the programs mentioned, taking a full 16.7 seconds to compute 1 million digits (1,000,000) of decimal pi on a decent processor - Core i3-8100, on a single core. But - right now, it works - and thus provides a ready base for continued improvement and optimization. We also invite feedback and contributions as to how it can be made better.
 
+NEW (UE+1616.63 Ms [2021-03-24]): The program now can compute 1M in under 9s.
+
 Building
 ========
 The program code is an Eclipse project and .mk makefiles, however you do not need Eclipse itself to compile the program (but it is definitely recommended if you want to contribute changes). The program can be compiled on any UNIX-style system with suitable C++ compiler and standard toolchain (e.g. g++ and make) by changing to the "Debug" or "Release" version directory and then running "make". The Debug build is much slower than the Release build, since compiler optimization is not turned on. The timings mentioned are given for the Release version, which is considered the "proper" one to benchmark.
