@@ -56,20 +56,14 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 
 	void rad2Itr::doFwdTransform(Memory::SafePtr<Cplex> data, std::size_t len)
 	{
-		std::size_t step(1);
-		std::size_t omegaStep(m_maxFftSize); // for exploiting that even though the table stores
-		                                     // e^(-2piin/Nmax) for some Nmax, we have
-		                                     // e^(-2piin/(Nmax/d)) = e^(-2pii(dn)/Nmax).
+		std::size_t step(len);
+		std::size_t omegaStep(m_maxFftSize / len); // for exploiting that even though the table stores
+																 // e^(-2piin/Nmax) for some Nmax, we have
+																 // e^(-2piin/(Nmax/d)) = e^(-2pii(dn)/Nmax).
 
-		while (step < len) {
-			step <<= 1;
-			omegaStep >>= 1;
-		}
-
-		while (step >= 1) {
+		while (step >= 2) {
 			// Perform the same pass as in the recursive case but over chunks of size step.
-			Memory::SafePtr<Cplex> chunk(data);
-			for (std::size_t inc(0); inc < len; inc += step, chunk += step) {
+			for (Memory::SafePtr<Cplex> chunk(data); chunk < data + len; chunk += step) {
 				std::size_t half(step >> 1);
 
 				for (std::size_t n = 0; n < half; ++n) {
@@ -92,13 +86,12 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 
 	void rad2Itr::doRevTransform(Memory::SafePtr<Cplex> data, std::size_t len)
 	{
-		std::size_t step(1);
-		std::size_t omegaStep(m_maxFftSize);
+		std::size_t step(2);
+		std::size_t omegaStep(m_maxFftSize / 2);
 
 		while (step <= len) {
 			// Perform the same pass as in the recursive case but over chunks of size step.
-			Memory::SafePtr<Cplex> chunk(data);
-			for (std::size_t inc(0); inc < len; inc += step, chunk += step) {
+			for (Memory::SafePtr<Cplex> chunk(data); chunk < data + len; chunk += step) {
 				std::size_t half(step >> 1);
 
 				for (std::size_t k = 0; k < half; ++k) {
@@ -106,8 +99,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 					w.i = -w.i; // inverse roots are just conjugates
 
 					Cplex tmp1 { chunk[k].r, chunk[k].i };
-					Cplex tmp2 { chunk[k + half].r * w.r - chunk[k + half].i * w.i, chunk[k + half].r * w.i
-						+ chunk[k + half].i * w.r };
+					Cplex tmp2 { chunk[k + half].r * w.r - chunk[k + half].i * w.i, chunk[k + half].r
+						* w.i + chunk[k + half].i * w.r };
 
 					chunk[k].r = tmp1.r + tmp2.r;
 					chunk[k].i = tmp1.i + tmp2.i;

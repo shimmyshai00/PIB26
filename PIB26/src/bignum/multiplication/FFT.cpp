@@ -26,7 +26,7 @@
 
 #include "../../exceptions/exceptions.hpp"
 
-#include "FFT/complex/rad2Rec.hpp"
+#include "FFT/complex/rad3Rec.hpp"
 
 #include "../primitives/add.hpp"
 #include "../primitives/addsm.hpp"
@@ -42,14 +42,11 @@
 namespace SDF::Bignum::Multiplication
 {
 	FFT::FFT(std::size_t maxProdSize)
-		: m_fft(new Fft::Complex::rad2Rec), m_maxProdSize(maxProdSize), m_fftBufferSize(
-			m_fft->getNearestSafeLengthTo(maxProdSize)), m_lastProdLength(0), m_num1FFTBuffer(
+		: m_fft(new Fft::Complex::rad3Rec), m_maxProdSize(maxProdSize), m_fftBufferSize(
+			calcBufferSize(maxProdSize)), m_lastProdLength(0), m_num1FFTBuffer(
 			m_fftBufferSize), m_num2FFTBuffer(m_fftBufferSize)
 	{
-		// Naive method: just pack one digit per FFT element. At a base BASE = 10000, this will
-		// generally fail some time past 1M digits, so to go further with this program, we will need
-		// tweaking here to pack fewer digits per element and suitable buffer sizing.
-		if (m_fftBufferSize > 2 * m_fft->getMaxNumLengthAtBase(BASE)) {
+		if (m_fftBufferSize > 2 * m_fft->getMaxNumLengthAtBase(calcFFTBase(maxProdSize).first)) {
 			// Bad!
 			throw SDF::Exceptions::Exception("Required FFT multiply size too big!");
 		}
@@ -230,6 +227,19 @@ namespace SDF::Bignum::Multiplication
 
 			digitBuffer[i] = tmp;
 		}
+	}
+
+	// Private helper members.
+	std::size_t FFT::calcBufferSize(std::size_t maxProdSize) {
+		// Naive method: just pack one digit per FFT element. At a base BASE = 10000, this will
+		// generally fail some time past 32M digits, so to go further with this program, we will need
+		// tweaking here to pack fewer digits per element and suitable buffer sizing.
+		return m_fft->getNearestSafeLengthTo(maxProdSize);
+	}
+
+	std::pair<Digit, std::size_t> FFT::calcFFTBase(std::size_t prodSize) {
+		// Naive: just use the same base
+		return std::make_pair(BASE, DIGS_PER_DIG);
 	}
 
 	// Private member.
