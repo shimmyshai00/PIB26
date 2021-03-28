@@ -83,6 +83,7 @@ namespace SDF::Bignum::Multiplication
 			Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex> m_num2FFTBuffer;
 
 			std::size_t calcBufferSize(std::size_t maxProdSize);
+			std::size_t calcAbsoluteMaxProdSize();
 			std::pair<Digit, std::size_t> calcFFTBase(std::size_t prodSize);
 
 			void loadBuffer(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t bufferLen,

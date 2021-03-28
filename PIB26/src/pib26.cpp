@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 		std::cout << std::endl;
 
 		std::size_t numDigits = Util::getUserNumericInput("Enter number of digits to compute", 100,
-			32000000);
+			64000000);
 		std::cout << std::endl;
 
 		/*

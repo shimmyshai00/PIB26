@@ -46,7 +46,7 @@ namespace SDF::Bignum::Multiplication
 			calcBufferSize(maxProdSize)), m_lastProdLength(0), m_num1FFTBuffer(
 			m_fftBufferSize), m_num2FFTBuffer(m_fftBufferSize)
 	{
-		if (m_fftBufferSize > 2 * m_fft->getMaxNumLengthAtBase(calcFFTBase(maxProdSize).first)) {
+		if (maxProdSize > calcAbsoluteMaxProdSize()) {
 			// Bad!
 			throw SDF::Exceptions::Exception("Required FFT multiply size too big!");
 		}
@@ -234,12 +234,40 @@ namespace SDF::Bignum::Multiplication
 		// Naive method: just pack one digit per FFT element. At a base BASE = 10000, this will
 		// generally fail some time past 32M digits, so to go further with this program, we will need
 		// tweaking here to pack fewer digits per element and suitable buffer sizing.
-		return m_fft->getNearestSafeLengthTo(maxProdSize);
+		std::pair<Digit, std::size_t> fftBase(calcFFTBase(maxProdSize));
+		return m_fft->getNearestSafeLengthTo(maxProdSize*DIGS_PER_DIG/fftBase.second);
+	}
+
+	std::size_t FFT::calcAbsoluteMaxProdSize() {
+		// Find the absolute maximum product size, which is achieved with only one small digit per
+		// element.
+		return(2*(1UL << (53 - 2*static_cast<std::size_t>(ceil(log(BASE_MINOR-1)/log(2))))));
 	}
 
 	std::pair<Digit, std::size_t> FFT::calcFFTBase(std::size_t prodSize) {
-		// Naive: just use the same base
-		return std::make_pair(BASE, DIGS_PER_DIG);
+		// This is based on the observation that the size of the largest element in the multiplication
+		// pyramid is given by:
+		//
+		//    Pyramid Max = (factorSize) * (BASE-1)^2
+		//
+		// so that the maximum permitted multiplication at a given base BASE is
+		//
+		//    Max Factor Size = 2^(53 - 2 lg(BASE-1))
+		//
+		std::size_t factorSize(prodSize / 2 + 1); // overestimate pyramid size
+		std::size_t maxFactorSize(0);
+		Digit fftBase(BASE);
+		std::size_t digsPerBaseDig(DIGS_PER_DIG);
+		maxFactorSize = 1 << (53 - 2*static_cast<int>(ceil(log(fftBase-1)/log(2))));
+
+		while((maxFactorSize < factorSize) && (fftBase > BASE_MINOR)) {
+			fftBase /= BASE_MINOR;
+			--digsPerBaseDig;
+
+			maxFactorSize = 1 << (53 - 2*static_cast<int>(ceil(log(fftBase-1)/log(2))));
+		}
+
+		return std::make_pair(fftBase, digsPerBaseDig);
 	}
 
 	// Private member.
