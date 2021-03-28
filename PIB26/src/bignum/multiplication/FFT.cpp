@@ -42,16 +42,26 @@
 namespace SDF::Bignum::Multiplication
 {
 	FFT::FFT(std::size_t maxProdSize)
-		: m_fft(new Fft::Complex::rad3Rec), m_maxProdSize(maxProdSize), m_fftBufferSize(
-			calcBufferSize(maxProdSize)), m_lastProdLength(0), m_num1FFTBuffer(
-			m_fftBufferSize), m_num2FFTBuffer(m_fftBufferSize)
+		: m_fft(new Fft::Complex::rad3Rec), m_maxProdSize(maxProdSize), m_lastProdLength(0)
 	{
-		if (maxProdSize > calcAbsoluteMaxProdSize()) {
-			// Bad!
-			throw SDF::Exceptions::Exception("Required FFT multiply size too big!");
+		std::size_t smallsPerElement(calcSmallsPerElement(m_maxProdSize));
+		std::size_t expandedMaxProdSize((m_maxProdSize * DIGS_PER_DIG) / smallsPerElement);
+		if ((expandedMaxProdSize * DIGS_PER_DIG) % smallsPerElement) {
+			++expandedMaxProdSize; // round up
 		}
 
-		m_productDigits = m_num2FFTBuffer.pun<Digit>();
+		m_fftBufferSize = m_fft->getNearestSafeLengthTo(expandedMaxProdSize);
+
+		for (std::size_t i(0); i <= DIGS_PER_DIG; ++i) {
+			m_smallBases[i] = pow(BASE_MINOR, i);
+		}
+
+		m_num1FFTBuffer = std::make_unique<Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex>>(
+			m_fftBufferSize);
+		m_num2FFTBuffer = std::make_unique<Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex>>(
+			m_fftBufferSize);
+
+		m_productDigits = m_num2FFTBuffer->pun<Digit>();
 	}
 
 	void FFT::mulDigits(Memory::SafePtr<Digit> a, std::size_t aLen, Memory::SafePtr<Digit> b,
@@ -188,15 +198,50 @@ namespace SDF::Bignum::Multiplication
 
 	// Private members.
 	void FFT::loadBuffer(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t bufferLen,
-		Memory::SafePtr<Digit> num, std::size_t numLen)
+		Memory::SafePtr<Digit> num, std::size_t numLen, std::size_t smallsPerFftElement)
 	{
-		// Super naive - not even right angle convolution yet in this very first rough draft
-		for (std::size_t i(0); i < numLen; ++i) {
-			fftBuffer[i] = { num[i], 0.0 };
-		}
+		// The parameters fftBase and smallsPerFftElement allow us to stretch the FFT multiplication
+		// to larger lengths than would otherwise be permitted by rounding error by packing fewer
+		// small digits (i.e. base-BASE_MINOR) per element than the input, fed in base-BASE, has
+		// directly. One should pass fftBase == BASE_MINOR^smallsPerFftElement; both are calculated by
+		// getFFTBase.
+		if (smallsPerFftElement == DIGS_PER_DIG) {
+			// TBA: use right-angle convolution to save half the memory and transform length.
+			for (std::size_t i(0); i < numLen; ++i) {
+				fftBuffer[i] = { num[i], 0.0 };
+			}
 
-		for (std::size_t i(numLen); i < bufferLen; ++i) {
-			fftBuffer[i] = { 0.0, 0.0 };
+			for (std::size_t i(numLen); i < bufferLen; ++i) {
+				fftBuffer[i] = { 0.0, 0.0 };
+			}
+		} else {
+			// Pack fewer digits per element. We do this by in effect creating a "stream buffer" for
+			// small digits, withdrawing smallsPerFftElement worth and loading it up again with new
+			// digits when it gets low.
+			TwoDigit smallDigitBuffer(0);
+			std::size_t smallsInBuffer(0);
+			std::size_t outBufIdx(0);
+
+			for (std::size_t i(0); (i < numLen) && (outBufIdx < bufferLen); ++outBufIdx) {
+				if (smallsInBuffer < smallsPerFftElement) {
+					// "buffer" some new digits. Note we must add these to the _left_ of the ones
+					// already in the buffer.
+					smallDigitBuffer += m_smallBases[smallsInBuffer] * num[i];
+					smallsInBuffer += DIGS_PER_DIG;
+					++i;
+				}
+
+				// drain buffer
+				fftBuffer[outBufIdx] = { (smallDigitBuffer % m_smallBases[smallsPerFftElement]), 0.0 };
+				smallDigitBuffer /= m_smallBases[smallsPerFftElement];
+				smallsInBuffer -= smallsPerFftElement;
+			}
+
+			// Finish off any remainder.
+			for (; outBufIdx < bufferLen; ++outBufIdx) {
+				fftBuffer[outBufIdx] = { smallDigitBuffer, 0.0 };
+				smallDigitBuffer = 0;
+			}
 		}
 	}
 
@@ -213,38 +258,59 @@ namespace SDF::Bignum::Multiplication
 	}
 
 	void FFT::extractProduct(Memory::SafePtr<Digit> digitBuffer, std::size_t digitsToGet,
-		Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize)
+		Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize,
+		std::size_t smallsPerFftElement)
 	{
-		double carry(0);
-		for (std::size_t i(0); i < digitsToGet; ++i) {
-			// divide by the FFT size; the FFT leaves the product terms multiplied by it
-			double tmp = floor((fftBuffer[i].r / fftSize) + 0.5);
+		if (smallsPerFftElement == DIGS_PER_DIG) {
+			double carry(0);
+			for (std::size_t i(0); i < digitsToGet; ++i) {
+				// divide by the FFT size; the FFT leaves the product terms multiplied by it
+				double tmp = floor((fftBuffer[i].r / fftSize) + 0.5);
 
-			// release carries
-			tmp += carry;
-			carry = floor(tmp / BASE);
-			tmp -= carry * BASE;
+				// release carries
+				tmp += carry;
+				carry = floor(tmp / BASE);
+				tmp -= carry * BASE;
 
-			digitBuffer[i] = tmp;
+				digitBuffer[i] = tmp;
+			}
+		} else {
+			// Repack the elements while extracting.
+			double carry(0);
+			TwoDigit smallDigitBuffer(0);
+			std::size_t smallsInBuffer(0);
+			std::size_t outBufIdx(0);
+			for (std::size_t i(0); (i < fftSize) && (outBufIdx < digitsToGet); ++i) {
+				// divide by the FFT size; the FFT leaves the product terms multiplied by it
+				double tmp = floor((fftBuffer[i].r / fftSize) + 0.5);
+
+				// release carries
+				tmp += carry;
+				carry = floor(tmp / m_smallBases[smallsPerFftElement]);
+				tmp -= carry * m_smallBases[smallsPerFftElement];
+
+				// buffer it
+				smallDigitBuffer += m_smallBases[smallsInBuffer] * tmp;
+				smallsInBuffer += smallsPerFftElement;
+
+				if (smallsInBuffer >= DIGS_PER_DIG) {
+					digitBuffer[outBufIdx] = smallDigitBuffer % BASE;
+					smallDigitBuffer /= BASE;
+					smallsInBuffer -= DIGS_PER_DIG;
+					++outBufIdx;
+				}
+			}
+
+			for (; outBufIdx < digitsToGet; ++outBufIdx) {
+				digitBuffer[outBufIdx] = smallDigitBuffer;
+				smallDigitBuffer = 0;
+			}
 		}
 	}
 
-	// Private helper members.
-	std::size_t FFT::calcBufferSize(std::size_t maxProdSize) {
-		// Naive method: just pack one digit per FFT element. At a base BASE = 10000, this will
-		// generally fail some time past 32M digits, so to go further with this program, we will need
-		// tweaking here to pack fewer digits per element and suitable buffer sizing.
-		std::pair<Digit, std::size_t> fftBase(calcFFTBase(maxProdSize));
-		return m_fft->getNearestSafeLengthTo(maxProdSize*DIGS_PER_DIG/fftBase.second);
-	}
-
-	std::size_t FFT::calcAbsoluteMaxProdSize() {
-		// Find the absolute maximum product size, which is achieved with only one small digit per
-		// element.
-		return(2*(1UL << (53 - 2*static_cast<std::size_t>(ceil(log(BASE_MINOR-1)/log(2))))));
-	}
-
-	std::pair<Digit, std::size_t> FFT::calcFFTBase(std::size_t prodSize) {
+// Private helper members.
+	std::size_t FFT::calcSmallsPerElement(std::size_t prodSize)
+	{
 		// This is based on the observation that the size of the largest element in the multiplication
 		// pyramid is given by:
 		//
@@ -254,35 +320,39 @@ namespace SDF::Bignum::Multiplication
 		//
 		//    Max Factor Size = 2^(53 - 2 lg(BASE-1))
 		//
-		std::size_t factorSize(prodSize / 2 + 1); // overestimate pyramid size
-		std::size_t maxFactorSize(0);
-		Digit fftBase(BASE);
-		std::size_t digsPerBaseDig(DIGS_PER_DIG);
-		maxFactorSize = 1 << (53 - 2*static_cast<int>(ceil(log(fftBase-1)/log(2))));
+		// and we use hand tweaked factors so we can adjust for the possibility of any extra
+		// rounding error in the FFT math itself.
 
-		while((maxFactorSize < factorSize) && (fftBase > BASE_MINOR)) {
-			fftBase /= BASE_MINOR;
-			--digsPerBaseDig;
-
-			maxFactorSize = 1 << (53 - 2*static_cast<int>(ceil(log(fftBase-1)/log(2))));
+		// Note: if BASE is changed, one will need to recalculate these factors. These assume
+		//       BASE == 10000. If we want to change BASE frequently, we might want to automate this.
+		std::size_t factorSize((prodSize / 2) + (prodSize % 2));
+		if (factorSize <= 67108864UL) {
+			return 4;
+		} else if (factorSize <= 4294967296UL) {
+			return 3;
+		} else {
+			return 2;
 		}
-
-		return std::make_pair(fftBase, digsPerBaseDig);
 	}
 
-	// Private member.
+// Private member.
 	void FFT::mulCore(Memory::SafePtr<Digit> a, std::size_t aLen, Memory::SafePtr<Digit> b,
 		std::size_t bLen)
 	{
 		// Load the numbers into the buffers.
 		std::size_t prodSize(aLen + bLen);
-		std::size_t safeSize(m_fft->getNearestSafeLengthTo(prodSize));
+		std::size_t smallsPerElement(calcSmallsPerElement(prodSize));
+		std::size_t expandedProdSize = (prodSize * DIGS_PER_DIG) / smallsPerElement;
+		if ((prodSize * DIGS_PER_DIG) % smallsPerElement) {
+			++expandedProdSize; // round up
+		}
+		std::size_t safeSize(m_fft->getNearestSafeLengthTo(expandedProdSize));
 
-		Memory::SafePtr<Fft::Complex::Cplex> num1BufPtr(m_num1FFTBuffer.accessData(0));
-		Memory::SafePtr<Fft::Complex::Cplex> num2BufPtr(m_num2FFTBuffer.accessData(0));
+		Memory::SafePtr<Fft::Complex::Cplex> num1BufPtr(m_num1FFTBuffer->accessData(0));
+		Memory::SafePtr<Fft::Complex::Cplex> num2BufPtr(m_num2FFTBuffer->accessData(0));
 
-		loadBuffer(num1BufPtr, safeSize, a, aLen);
-		loadBuffer(num2BufPtr, safeSize, b, bLen);
+		loadBuffer(num1BufPtr, safeSize, a, aLen, smallsPerElement);
+		loadBuffer(num2BufPtr, safeSize, b, bLen, smallsPerElement);
 
 		// Do the FFT multiplication itself.
 		m_fft->doFwdTransform(num1BufPtr, safeSize);
@@ -294,24 +364,29 @@ namespace SDF::Bignum::Multiplication
 
 		// Unspool the result and release the carries.
 		Memory::SafePtr<Digit> resultPtr(m_productDigits.accessData(0));
-		extractProduct(resultPtr, prodSize, num1BufPtr, safeSize);
+		extractProduct(resultPtr, prodSize, num1BufPtr, safeSize, smallsPerElement);
 	}
 
 	void FFT::sqrCore(Memory::SafePtr<Digit> a, std::size_t aLen)
 	{
 		// Can save a transform when squaring
 		std::size_t prodSize(aLen << 1);
-		std::size_t safeSize(m_fft->getNearestSafeLengthTo(prodSize));
+		std::size_t smallsPerElement(calcSmallsPerElement(prodSize));
+		std::size_t expandedProdSize = (prodSize * DIGS_PER_DIG) / smallsPerElement;
+		if ((prodSize * DIGS_PER_DIG) % smallsPerElement) {
+			++expandedProdSize; // round up
+		}
+		std::size_t safeSize(m_fft->getNearestSafeLengthTo(expandedProdSize));
 
-		Memory::SafePtr<Fft::Complex::Cplex> num1BufPtr(m_num1FFTBuffer.accessData(0));
+		Memory::SafePtr<Fft::Complex::Cplex> num1BufPtr(m_num1FFTBuffer->accessData(0));
 
-		loadBuffer(num1BufPtr, safeSize, a, aLen);
+		loadBuffer(num1BufPtr, safeSize, a, aLen, smallsPerElement);
 
 		m_fft->doFwdTransform(num1BufPtr, safeSize);
 		convolute(num1BufPtr, num1BufPtr, safeSize);
 		m_fft->doRevTransform(num1BufPtr, safeSize);
 
 		Memory::SafePtr<Digit> resultPtr(m_productDigits.accessData(0));
-		extractProduct(resultPtr, prodSize, num1BufPtr, safeSize);
+		extractProduct(resultPtr, prodSize, num1BufPtr, safeSize, smallsPerElement);
 	}
 }

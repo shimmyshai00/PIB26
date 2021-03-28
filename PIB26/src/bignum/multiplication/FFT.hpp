@@ -69,29 +69,32 @@ namespace SDF::Bignum::Multiplication
 		private:
 			static const std::size_t THRESHOLD_SMOOTHING = 4;
 
+			// Bases for digit conversion.
+			TwoDigit m_smallBases[DIGS_PER_DIG + 1];
+
 			// The FFT object itself.
 			std::unique_ptr<Fft::IFft<Fft::Complex::Cplex>> m_fft;
 
 			std::size_t m_maxProdSize;
-			std::size_t m_fftBufferSize;
 			std::size_t m_lastProdLength;
+
+			std::size_t m_fftBufferSize;
 
 			// Use punning to save storage space
 			Memory::Buffers::Local::Punned<Digit> m_productDigits;
 
-			Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex> m_num1FFTBuffer;
-			Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex> m_num2FFTBuffer;
+			std::unique_ptr<Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex>> m_num1FFTBuffer;
+			std::unique_ptr<Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex>> m_num2FFTBuffer;
 
-			std::size_t calcBufferSize(std::size_t maxProdSize);
-			std::size_t calcAbsoluteMaxProdSize();
-			std::pair<Digit, std::size_t> calcFFTBase(std::size_t prodSize);
+			std::size_t calcSmallsPerElement(std::size_t prodSize);
 
 			void loadBuffer(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t bufferLen,
-				Memory::SafePtr<Digit> num, std::size_t numLen);
+				Memory::SafePtr<Digit> num, std::size_t numLen, std::size_t smallsPerFftElement);
 			void convolute(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer1,
 				Memory::SafePtr<Fft::Complex::Cplex> fftBuffer2, std::size_t bufferLen);
 			void extractProduct(Memory::SafePtr<Digit> digitBuffer, std::size_t digitsToGet,
-				Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize);
+				Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize,
+				std::size_t smallsPerFftElement);
 
 			void mulCore(Memory::SafePtr<Digit> a, std::size_t aLen, Memory::SafePtr<Digit> b,
 				std::size_t bLen);
