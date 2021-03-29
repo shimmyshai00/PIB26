@@ -26,6 +26,8 @@
 
 #include "../memory/buffers/local/RAMOnly.hpp"
 
+#include "../util/printB26.hpp"
+
 #include <sstream>
 #include <iomanip>
 
@@ -96,10 +98,12 @@ namespace SDF::Bignum
 			ss << "-";
 		}
 
-		ss << m_digits[m_precNominal + GUARD_PREC] << ".";
+		//ss << m_digits[m_precNominal + GUARD_PREC] << ".";
+		ss << Util::printB26(m_digits[m_precNominal + GUARD_PREC], 0) << ".";
 
 		for (std::ptrdiff_t i(m_precNominal + GUARD_PREC); i > 0; --i) {
-			ss << std::setfill('0') << std::setw(4) << m_digits[i - 1];
+			//ss << std::setfill('0') << std::setw(4) << m_digits[i - 1];
+			ss << Util::printB26(m_digits[m_precNominal + GUARD_PREC], DIGS_PER_SMALL);
 		}
 
 		ss << " x BASE^" << m_exp;
@@ -123,11 +127,11 @@ namespace SDF::Bignum
 		// Position from MSD, not LSD
 		std::size_t smallDigitPos(numLeadingZeroes);
 
-		ofile << getSmallDigit(smallDigitPos) << "." << std::endl;
+		ofile << Util::printB26Digit(getSmallDigit(smallDigitPos)) << "." << std::endl;
 
 		// Now format the rest.
 		for (std::size_t i(1); i <= numDigits; ++i) {
-			ofile << getSmallDigit(smallDigitPos + i);
+			ofile << Util::printB26Digit(getSmallDigit(smallDigitPos + i));
 
 			if (i % 10 == 0) {
 				ofile << " ";

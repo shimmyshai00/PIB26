@@ -324,11 +324,11 @@ namespace SDF::Bignum::Multiplication
 		// rounding error in the FFT math itself.
 
 		// Note: if BASE is changed, one will need to recalculate these factors. These assume
-		//       BASE == 10000. If we want to change BASE frequently, we might want to automate this.
+		//       BASE == 456976. If we want to change BASE frequently, we might want to automate this.
 		std::size_t factorSize((prodSize / 2) + (prodSize % 2));
-		if (factorSize <= 67108864UL) {
+		if (factorSize <= 16384) {
 			return 4;
-		} else if (factorSize <= 4294967296UL) {
+		} else if (factorSize <= 8388608) {
 			return 3;
 		} else {
 			return 2;

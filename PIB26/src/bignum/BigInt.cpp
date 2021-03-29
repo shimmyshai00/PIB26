@@ -26,6 +26,8 @@
 
 #include "../memory/buffers/local/RAMOnly.hpp"
 
+#include "../util/printB26.hpp"
+
 #include <sstream>
 #include <iomanip>
 
@@ -49,7 +51,8 @@ namespace SDF::Bignum
 	std::string BigInt::print() const
 	{
 		if (m_digitsUsed == 0) {
-			return "0";
+			//return "0";
+			return "A";
 		} else {
 			std::stringstream ss;
 			if (m_sign == SIGN_POSITIVE) {
@@ -58,10 +61,12 @@ namespace SDF::Bignum
 				ss << "-";
 			}
 
-			ss << m_digits[m_digitsUsed - 1];
+			//ss << m_digits[m_digitsUsed - 1];
+			ss << Util::printB26(m_digits[m_digitsUsed - 1], 0);
 
 			for (std::size_t i(m_digitsUsed - 1); i > 0; --i) {
-				ss << std::setfill('0') << std::setw(4) << m_digits[i - 1];
+				//ss << std::setfill('0') << std::setw(4) << m_digits[i - 1];
+				ss << Util::printB26(m_digits[m_digitsUsed - 1], DIGS_PER_SMALL);
 			}
 
 			return ss.str();

@@ -27,10 +27,10 @@
 
 namespace SDF::Bignum {
 	// Constant and type definitions used by the bignum package.
-	static const unsigned int BASE = 10000;     // The internal bignum base.
-	static const unsigned int BASE_MINOR = 10;  // The small base dividing BASE.
-	static const unsigned int DIGS_PER_DIG = 4; // BASE should equal BASE_MINOR^DIGS_PER_DIG.
-	static const unsigned int DIGS_PER_SMALL = 3; // The minimum number of base-BASE digits required
+	static const unsigned int BASE = 456976;      // The internal bignum base.
+	static const unsigned int BASE_MINOR = 26;    // The small base dividing BASE.
+	static const unsigned int DIGS_PER_DIG = 4;   // BASE should equal BASE_MINOR^DIGS_PER_DIG.
+	static const unsigned int DIGS_PER_SMALL = 2; // The minimum number of base-BASE digits required
 	                                              // to hold a small number (unsigned int).
 
 	typedef int Digit;     // Should be able to hold a number up to BASE-1.

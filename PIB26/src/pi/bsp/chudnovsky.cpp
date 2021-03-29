@@ -48,7 +48,7 @@ namespace SDF::Pi::BSP
 		struct timespec startTime, endTime;
 
 		std::size_t prec(numDigits / Bignum::DIGS_PER_DIG);
-		std::size_t numTerms(numDigits / 14 + 1);
+		std::size_t numTerms(numDigits / 9.8 + 1);
 
 		std::cout << "Computing series with " << numTerms << " terms..." << std::endl;
 		clock_gettime(CLOCK_REALTIME, &startTime);
