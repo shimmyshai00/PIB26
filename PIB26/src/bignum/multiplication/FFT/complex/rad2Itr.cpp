@@ -78,6 +78,7 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 
 				for (std::size_t n = 0; n < half; ++n) {
 					Cplex w = m_omegaTable[n * omegaStep];
+
 					Cplex tmp1 = { chunk[n].r + chunk[n + half].r, chunk[n].i + chunk[n + half].i };
 					Cplex tmp2 = { chunk[n].r - chunk[n + half].r, chunk[n].i - chunk[n + half].i };
 
@@ -107,9 +108,6 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 				for (std::size_t k = 0; k < half; ++k) {
 					Cplex w = m_omegaTable[k * omegaStep];
 					w.i = -w.i; // inverse roots are just conjugates
-
-					//w.r = cos(2.0 * M_PI * k / step);
-					//w.i = sin(2.0 * M_PI * k / step);
 
 					Cplex tmp1 { chunk[k].r, chunk[k].i };
 					Cplex tmp2 { chunk[k + half].r * w.r - chunk[k + half].i * w.i, chunk[k + half].r

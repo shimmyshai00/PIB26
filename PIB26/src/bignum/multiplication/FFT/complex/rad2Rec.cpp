@@ -82,8 +82,6 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 			for (std::size_t n = 0; n < half; ++n) {
 				// NEW: use precomputed trig tables.
 				Cplex w = m_omegaTable[n * m_omegaSize / full];
-				w.r = cos(-2.0 * M_PI * n / full);
-				w.i = sin(-2.0 * M_PI * n / full);
 
 				Cplex tmp1 = { data[n].r + data[n + half].r, data[n].i + data[n + half].i };
 				Cplex tmp2 = { data[n].r - data[n + half].r, data[n].i - data[n + half].i };
@@ -127,9 +125,6 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 			for (std::size_t k = 0; k < half; ++k) {
 				Cplex w = m_omegaTable[k * m_omegaSize / full];
 				w.i = -w.i;
-
-				w.r = cos(2.0 * M_PI * k / full);
-								w.i = sin(2.0 * M_PI * k / full);
 
 				Cplex tmp1 { data[k].r, data[k].i };
 				Cplex tmp2 { data[k + half].r * w.r - data[k + half].i * w.i, data[k + half].r * w.i

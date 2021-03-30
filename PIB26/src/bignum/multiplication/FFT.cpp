@@ -70,7 +70,7 @@ namespace SDF::Bignum::Multiplication
 
 		m_fft = std::make_unique<Fft::Complex::rad3Rec>(m_omegaBuffer->accessData(0), omegaTableSize);
 
-		// Create teh FFT buffers.
+		// Create the FFT buffers.
 		m_fftBufferSize = m_fft->getNearestSafeLengthTo(expandedMaxProdSize);
 
 		m_num1FFTBuffer = std::make_unique<Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex>>(

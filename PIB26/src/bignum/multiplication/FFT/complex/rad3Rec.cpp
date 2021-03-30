@@ -71,7 +71,7 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 			}
 
 			// Use the smaller as the desired safe length.
-			if(pow2 < pow2Times3) {
+			if((pow2 < pow2Times3) && (m_omegaSize % pow2 == 0)) {
 				return pow2;
 			} else {
 				return pow2Times3;
@@ -157,12 +157,6 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 					w2.r = w.r * w.r - w.i * w.i;
 					w2.i = 2.0 * w.r * w.i;
 				}
-
-				w.r = cos(2.0 * M_PI * n / full);
-								w.i = sin(2.0 * M_PI * n / full);
-
-								w2.r = cos(4.0 * M_PI * n / full);
-								w2.i = sin(4.0 * M_PI * n / full);
 
 				static const double c_sq3o2 = 0.8660254037844386l; // sqrt(3)/2
 				Cplex tmp1, tmp2, tmp3;
