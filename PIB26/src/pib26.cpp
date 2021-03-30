@@ -1,5 +1,5 @@
 /*
- * PIB26 version 0.0.1
+ * PIB26 version 0.0.2
  * (C) 2020-2021 Shimrra Shai.
  * 
  * File:      pib26.cpp
@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 	using namespace SDF;
 
 	try {
-		std::cout << "PIB26 version 0.0.1" << std::endl;
+		std::cout << "PIB26 version 0.0.2" << std::endl;
 		std::cout << std::endl;
 
 		std::size_t numDigits = Util::getUserNumericInput("Enter number of digits to compute", 100,

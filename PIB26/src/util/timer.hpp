@@ -1,5 +1,5 @@
 /*
- * PIB26 version 0.0.1
+ * PIB26 version 0.0.2
  * (C) 2020-2021 Shimrra Shai.
  * 
  * File:      timer.hpp
