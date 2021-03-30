@@ -83,6 +83,7 @@ namespace SDF::Bignum::Multiplication
 			// Use punning to save storage space
 			Memory::Buffers::Local::Punned<Digit> m_productDigits;
 
+			std::unique_ptr<Memory::ILocalBuffer<Fft::Complex::Cplex>> m_omegaBuffer;
 			std::unique_ptr<Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex>> m_num1FFTBuffer;
 			std::unique_ptr<Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex>> m_num2FFTBuffer;
 

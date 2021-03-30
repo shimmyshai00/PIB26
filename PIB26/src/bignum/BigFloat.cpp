@@ -103,7 +103,7 @@ namespace SDF::Bignum
 
 		for (std::ptrdiff_t i(m_precNominal + GUARD_PREC); i > 0; --i) {
 			//ss << std::setfill('0') << std::setw(4) << m_digits[i - 1];
-			ss << Util::printB26(m_digits[m_precNominal + GUARD_PREC], DIGS_PER_SMALL);
+			ss << Util::printB26(m_digits[i - 1], DIGS_PER_DIG);
 		}
 
 		ss << " x BASE^" << m_exp;

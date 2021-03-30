@@ -24,16 +24,34 @@
 
 #include "rad2Rec.hpp"
 
+#include "../../../../exceptions/exceptions.hpp"
+
 #include "../FFTTweak.hpp"
 
 #include <cmath>
 
 namespace SDF::Bignum::Multiplication::Fft::Complex
 {
-	rad2Rec::rad2Rec()
-		: m_iterativeFft(g_cacheSize / (2 * sizeof(Cplex))) // try to fit whole iterative FFT - table
-	                                                       // and data - into cache
+	rad2Rec::rad2Rec(Memory::SafePtr<Cplex> omegaTable, std::size_t omegaSize)
+		: m_omegaTable(omegaTable), m_omegaSize(omegaSize),
+		  m_iterativeFftThreshold(g_cacheSize / (2 * sizeof(Cplex))), // try to fit whole iterative
+		                                                              // FFT - table and data - into
+		                                                              // cache
+		  m_iterativeFft(omegaTable, omegaSize)
 	{
+	}
+
+	std::size_t rad2Rec::getMaxFftSize() const
+	{
+		// The maximum FFT size is the largest power of 2 size dividing the size of the omega table.
+		std::size_t maxSize(1);
+		std::size_t omegaSize(m_omegaSize);
+		while(!(omegaSize & 1)) {
+			omegaSize >>= 1;
+			maxSize <<= 1;
+		}
+
+		return maxSize;
 	}
 
 	std::size_t rad2Rec::getNearestSafeLengthTo(std::size_t length) const
@@ -44,29 +62,29 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 			pow2Length <<= 1;
 		}
 
-		return pow2Length;
+		if(m_omegaSize % pow2Length != 0) {
+			throw Exceptions::Exception("ERROR: Required FFT size is too large!");
+		} else {
+			return pow2Length;
+		}
 	}
 
 	void rad2Rec::doFwdTransform(Memory::SafePtr<Cplex> data, std::size_t len)
 	{
 		// The forward transform is done as a decimation-in-frequency (DIF) version.
 		// The DIF version in a sense is just "built backwards" from the DIT version.
-		if (len < m_iterativeFft.getMaxFftSize()) { // NEW! Switch to iterative for short transforms.
+		if (len < m_iterativeFftThreshold) {
 			m_iterativeFft.doFwdTransform(data, len);
 		} else {
 			std::size_t half(len >> 1);
 			std::size_t full(len);
 
-			// Modest improvement: compute the primitive root only, then derive the others by powering
-			// it.
-			// Compute the primitive cosine as 1 - cos, which keeps more precision; also do it in
-			// terms of sine via the half-angle trig identity for just that reason.
-			double w0Cos = sin(-M_PI / full);
-			w0Cos = 2.0 * w0Cos * w0Cos;
-			double w0Sin = sin(-2 * M_PI / full);
-			Cplex w { 1, 0 };
-
 			for (std::size_t n = 0; n < half; ++n) {
+				// NEW: use precomputed trig tables.
+				Cplex w = m_omegaTable[n * m_omegaSize / full];
+				w.r = cos(-2.0 * M_PI * n / full);
+				w.i = sin(-2.0 * M_PI * n / full);
+
 				Cplex tmp1 = { data[n].r + data[n + half].r, data[n].i + data[n + half].i };
 				Cplex tmp2 = { data[n].r - data[n + half].r, data[n].i - data[n + half].i };
 
@@ -75,20 +93,6 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 
 				data[n + half].r = tmp2.r * w.r - tmp2.i * w.i;
 				data[n + half].i = tmp2.r * w.i + tmp2.i * w.r;
-
-				// modified multiply because we computed (1 - cos(...)) + i sin(...)
-				// To prevent the build-up of round-off error, recompute "exactly" every so often, but
-				// not at such an interval that will noticeably impair performance.
-				if (n % 1000 == 0) {
-					w.r = cos(-2.0 * M_PI * (n+1) / full);
-					w.i = sin(-2.0 * M_PI * (n+1) / full);
-				} else {
-					tmp1.r = w.r - (w.r * w0Cos + w.i * w0Sin);
-					tmp1.i = w.i - (-w.r * w0Sin + w.i * w0Cos);
-
-					w.r = tmp1.r;
-					w.i = tmp1.i;
-				}
 			}
 
 			doFwdTransform(data, half);
@@ -104,7 +108,7 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 		// FFT useless as a frequency analyzer - if one wants to recycle this code in another program
 		// where it has that use, one will need to adapt the implementation or fashion a suitable
 		// frontend that will recursively sort the data.
-		if (len < m_iterativeFft.getMaxFftSize()) {
+		if (len < m_iterativeFftThreshold) {
 			m_iterativeFft.doRevTransform(data, len);
 		} else {
 			// Do the recursion:
@@ -120,12 +124,13 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 			doRevTransform(data, half);
 			doRevTransform(data + half, half);
 
-			double w0Cos = sin(M_PI / full);
-			w0Cos = 2.0 * w0Cos * w0Cos;
-			double w0Sin = sin(2 * M_PI / full);
-			Cplex w { 1, 0 };
-
 			for (std::size_t k = 0; k < half; ++k) {
+				Cplex w = m_omegaTable[k * m_omegaSize / full];
+				w.i = -w.i;
+
+				w.r = cos(2.0 * M_PI * k / full);
+								w.i = sin(2.0 * M_PI * k / full);
+
 				Cplex tmp1 { data[k].r, data[k].i };
 				Cplex tmp2 { data[k + half].r * w.r - data[k + half].i * w.i, data[k + half].r * w.i
 					+ data[k + half].i * w.r };
@@ -135,17 +140,6 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 
 				data[k + half].r = tmp1.r - tmp2.r;
 				data[k + half].i = tmp1.i - tmp2.i;
-
-				if (k % 1000 == 0) {
-					w.r = cos(2.0 * M_PI * (k+1) / full);
-					w.i = sin(2.0 * M_PI * (k+1) / full);
-				} else {
-					tmp1.r = w.r - (w.r * w0Cos + w.i * w0Sin);
-					tmp1.i = w.i - (-w.r * w0Sin + w.i * w0Cos);
-
-					w.r = tmp1.r;
-					w.i = tmp1.i;
-				}
 			}
 		}
 	}

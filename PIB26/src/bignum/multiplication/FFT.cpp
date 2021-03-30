@@ -26,6 +26,7 @@
 
 #include "../../exceptions/exceptions.hpp"
 
+#include "FFT/complex/genOmegaTable.hpp"
 #include "FFT/complex/rad3Rec.hpp"
 
 #include "../primitives/add.hpp"
@@ -35,14 +36,14 @@
 #include <cmath>
 #include <cstdio>
 
-//#include <iostream>
+#include <iostream>
 //#include <iomanip>
 //#include <fstream>
 
 namespace SDF::Bignum::Multiplication
 {
 	FFT::FFT(std::size_t maxProdSize)
-		: m_fft(new Fft::Complex::rad3Rec), m_maxProdSize(maxProdSize), m_lastProdLength(0)
+		: m_maxProdSize(maxProdSize), m_lastProdLength(0)
 	{
 		std::size_t smallsPerElement(calcSmallsPerElement(m_maxProdSize));
 		std::size_t expandedMaxProdSize((m_maxProdSize * DIGS_PER_DIG) / smallsPerElement);
@@ -50,11 +51,27 @@ namespace SDF::Bignum::Multiplication
 			++expandedMaxProdSize; // round up
 		}
 
-		m_fftBufferSize = m_fft->getNearestSafeLengthTo(expandedMaxProdSize);
-
 		for (std::size_t i(0); i <= DIGS_PER_DIG; ++i) {
 			m_smallBases[i] = pow(BASE_MINOR, i);
 		}
+
+		std::cout << "Preparing Fast Fourier Transform root tables ...";
+
+		// The omega table size should always contain 1 factor of 3 for these FFTs.
+		std::size_t omegaTableSize(3);
+		while(omegaTableSize < expandedMaxProdSize) {
+			omegaTableSize <<= 1;
+		}
+
+		// Create the omega table.
+		m_omegaBuffer = Fft::Complex::genOmegaTable(omegaTableSize);
+
+		std::cout << " done!" << std::endl;
+
+		m_fft = std::make_unique<Fft::Complex::rad3Rec>(m_omegaBuffer->accessData(0), omegaTableSize);
+
+		// Create teh FFT buffers.
+		m_fftBufferSize = m_fft->getNearestSafeLengthTo(expandedMaxProdSize);
 
 		m_num1FFTBuffer = std::make_unique<Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex>>(
 			m_fftBufferSize);
@@ -326,9 +343,9 @@ namespace SDF::Bignum::Multiplication
 		// Note: if BASE is changed, one will need to recalculate these factors. These assume
 		//       BASE == 456976. If we want to change BASE frequently, we might want to automate this.
 		std::size_t factorSize((prodSize / 2) + (prodSize % 2));
-		if (factorSize <= 16384) {
+		if (factorSize <= 4096) {
 			return 4;
-		} else if (factorSize <= 8388608) {
+		} else if (factorSize <= 2097152) {
 			return 3;
 		} else {
 			return 2;

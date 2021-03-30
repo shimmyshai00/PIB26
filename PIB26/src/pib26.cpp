@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 		Bignum::Multiplication::FFT largeStrategy(
 			std::max<std::size_t>(16384, 2 * numDigits / Bignum::DIGS_PER_DIG) + 16);
 		Bignum::Multiplication::FlexMul3 flexStrategy(&smallStrategy, &medStrategy, &largeStrategy,
-			128, 2048);
+			128, 1024);
 		Pi::BSP::Chudnovsky chudnovsky(&flexStrategy);
 
 		std::cout << "Done." << std::endl;

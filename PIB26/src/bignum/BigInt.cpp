@@ -66,7 +66,7 @@ namespace SDF::Bignum
 
 			for (std::size_t i(m_digitsUsed - 1); i > 0; --i) {
 				//ss << std::setfill('0') << std::setw(4) << m_digits[i - 1];
-				ss << Util::printB26(m_digits[m_digitsUsed - 1], DIGS_PER_SMALL);
+				ss << Util::printB26(m_digits[i - 1], DIGS_PER_DIG);
 			}
 
 			return ss.str();

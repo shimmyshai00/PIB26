@@ -45,9 +45,16 @@ namespace SDF::Bignum::Multiplication::Fft {
 			//             FFT during multiplication.
 			virtual std::size_t getMaxNumLengthAtBase(long base) const = 0;
 
+			// Function:   getMaxFftSize
+			// Purpose:    Gets the maximum allowed FFT size.
+			// Parameters: None.
+			// Returns:    The largest permissible FFT size.
+			virtual std::size_t getMaxFftSize() const = 0;
+
 			// Function:   getNearestSafeLengthTo
-			// Purpose:    Gets the smallest "safe" length sufficient to transform a given length of
-			//             data. Data should be padded to this length prior to transforming.
+			// Purpose:    Gets the smallest "safe" (that is, okay to use) length sufficient to
+			//             transform a given length of data. Data should be padded to this length
+			//             prior to transforming.
 			// Parameters: length - The generic length to test.
 			// Returns:    The smallest safe length just larger than length.
 			virtual std::size_t getNearestSafeLengthTo(std::size_t length) const = 0;

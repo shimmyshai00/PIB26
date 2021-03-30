@@ -24,34 +24,59 @@
 
 #include "rad3Rec.hpp"
 
-#include <cmath>
+#include "../../../../exceptions/exceptions.hpp"
 
-namespace SDF::Bignum::Multiplication::Fft::Complex {
-	rad3Rec::rad3Rec()
+#include <cmath>
+#include <cstdio>
+
+namespace SDF::Bignum::Multiplication::Fft::Complex
+{
+	rad3Rec::rad3Rec(Memory::SafePtr<Cplex> omegaTable, std::size_t omegaSize)
+		: m_omegaTable(omegaTable), m_omegaSize(omegaSize), m_rad2Fft(omegaTable, omegaSize)
 	{
+	}
+
+	std::size_t rad3Rec::getMaxFftSize() const {
+		// The maximum FFT size for this type of transform is the largest number of the form 2^n or
+		// 3 * 2^n that divides the size of the omega table.
+		std::size_t maxPow2(1);
+		std::size_t omegaSize(m_omegaSize);
+		while(!(omegaSize & 1)) {
+			omegaSize >>= 1;
+			maxPow2 <<= 1;
+		}
+
+		if(m_omegaSize % (3 * maxPow2) == 0) {
+			return 3 * maxPow2;
+		} else {
+			return maxPow2;
+		}
 	}
 
 	std::size_t rad3Rec::getNearestSafeLengthTo(std::size_t length) const
 	{
-		// Get the smallest power of two just larger than this length OR the smallest power-of-
-		// 2 times 3 just larger, whichever one is closer.
-		std::size_t testLength(1);
-		std::size_t mulStage(0);
-		while(testLength < length) {
-			// Build a sequence of the form 1, 2, 3, 2*2, 2*3, 2*2*2, 2*2*3, 2*2*2*2, ...
-			if(mulStage == 0) {
-				testLength <<= 1;
-				mulStage = 1;
-			} else if(mulStage == 1) {
-				testLength = (testLength >> 1) * 3;
-				mulStage = 2;
-			} else if(mulStage == 2) {
-				testLength = (testLength / 3) << 2;
-				mulStage = 1;
+		if(length > m_omegaSize) {
+			throw Exceptions::Exception("ERROR: Required FFT size is too large!");
+		} else {
+			// Get smallest power of 2 no smaller than length.
+			std::size_t pow2(1);
+			while(pow2 < length) {
+				pow2 <<= 1;
+			}
+
+			// Get smallest number of the form 3 * 2^n no smaller than length.
+			std::size_t pow2Times3(3);
+			while(pow2Times3 < length) {
+				pow2Times3 <<= 1;
+			}
+
+			// Use the smaller as the desired safe length.
+			if(pow2 < pow2Times3) {
+				return pow2;
+			} else {
+				return pow2Times3;
 			}
 		}
-
-		return testLength;
 	}
 
 	void rad3Rec::doFwdTransform(Memory::SafePtr<Cplex> data, std::size_t len)
@@ -63,34 +88,33 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 			std::size_t third(len / 3);
 			std::size_t full(len);
 
-			double w0Cos = sin(-M_PI / full);
-			w0Cos = 2.0 * w0Cos * w0Cos;
-			double w0Sin = sin(-2 * M_PI / full);
-
-			double w0SqCos = sin(-2 * M_PI / full);
-			w0SqCos = 2.0 * w0SqCos * w0SqCos;
-			double w0SqSin = sin(-4 * M_PI / full);
-
-			Cplex w { 1, 0 };
-			Cplex w2 { 1, 0 }; // w^2
-
 			for (std::size_t n = 0; n < third; ++n) {
+				Cplex w = m_omegaTable[n * m_omegaSize / full];
+				Cplex w2 = w; // square of w
+
+				if(2 * n * m_omegaSize / full < m_omegaSize) {
+					w2 = m_omegaTable[2 * n * m_omegaSize / full];
+				} else {
+					w2.r = w.r * w.r - w.i * w.i;
+					w2.i = 2.0 * w.r * w.i;
+				}
+
 				static const double c_sq3o2 = 0.8660254037844386l; // sqrt(3)/2
 				Cplex tmp1, tmp2, tmp3;
 
 				// Tip: generate these with a CAS; not by hand!
-				tmp1.r = data[n].r + data[n + third].r + data[n + 2*third].r;
-				tmp1.i = data[n].i + data[n + third].i + data[n + 2*third].i;
+				tmp1.r = data[n].r + data[n + third].r + data[n + 2 * third].r;
+				tmp1.i = data[n].i + data[n + third].i + data[n + 2 * third].i;
 
-				tmp2.r = data[n].r - 0.5 * (data[n + third].r + data[n + 2*third].r)
-					                + c_sq3o2 * (data[n + third].i - data[n + 2*third].i);
-				tmp2.i = data[n].i - 0.5 * (data[n + third].i + data[n + 2*third].i)
-					                - c_sq3o2 * (data[n + third].r - data[n + 2*third].r);
+				tmp2.r = data[n].r - 0.5 * (data[n + third].r + data[n + 2 * third].r)
+					+ c_sq3o2 * (data[n + third].i - data[n + 2 * third].i);
+				tmp2.i = data[n].i - 0.5 * (data[n + third].i + data[n + 2 * third].i)
+					- c_sq3o2 * (data[n + third].r - data[n + 2 * third].r);
 
-				tmp3.r = data[n].r - 0.5 * (data[n + third].r + data[n + 2*third].r)
-					                - c_sq3o2 * (data[n + third].i - data[n + 2*third].i);
-				tmp3.i = data[n].i - 0.5 * (data[n + third].i + data[n + 2*third].i)
-									    + c_sq3o2 * (data[n + third].r - data[n + 2*third].r);
+				tmp3.r = data[n].r - 0.5 * (data[n + third].r + data[n + 2 * third].r)
+					- c_sq3o2 * (data[n + third].i - data[n + 2 * third].i);
+				tmp3.i = data[n].i - 0.5 * (data[n + third].i + data[n + 2 * third].i)
+					+ c_sq3o2 * (data[n + third].r - data[n + 2 * third].r);
 
 				data[n].r = tmp1.r;
 				data[n].i = tmp1.i;
@@ -98,33 +122,13 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 				data[n + third].r = tmp2.r * w.r - tmp2.i * w.i;
 				data[n + third].i = tmp2.r * w.i + tmp2.i * w.r;
 
-				data[n + 2*third].r = tmp3.r * w2.r - tmp3.i * w2.i;
-				data[n + 2*third].i = tmp3.r * w2.i + tmp3.i * w2.r;
-
-				if (n % 1000 == 0) {
-					w.r = cos(-2.0 * M_PI * (n+1) / full);
-					w.i = sin(-2.0 * M_PI * (n+1) / full);
-
-					w2.r = cos(-4.0 * M_PI * (n+1) / full);
-					w2.i = sin(-4.0 * M_PI * (n+1) / full);
-				} else {
-					tmp1.r = w.r - (w.r * w0Cos + w.i * w0Sin);
-					tmp1.i = w.i - (-w.r * w0Sin + w.i * w0Cos);
-
-					w.r = tmp1.r;
-					w.i = tmp1.i;
-
-					tmp1.r = w2.r - (w2.r * w0SqCos + w2.i * w0SqSin);
-					tmp1.i = w2.i - (-w2.r * w0SqSin + w2.i * w0SqCos);
-
-					w2.r = tmp1.r;
-					w2.i = tmp1.i;
-				}
+				data[n + 2 * third].r = tmp3.r * w2.r - tmp3.i * w2.i;
+				data[n + 2 * third].i = tmp3.r * w2.i + tmp3.i * w2.r;
 			}
 
 			doFwdTransform(data, third);
 			doFwdTransform(data + third, third);
-			doFwdTransform(data + 2*third, third);
+			doFwdTransform(data + 2 * third, third);
 		}
 	}
 
@@ -139,20 +143,27 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 
 			doRevTransform(data, third);
 			doRevTransform(data + third, third);
-			doRevTransform(data + 2*third, third);
-
-			double w0Cos = sin(M_PI / full);
-			w0Cos = 2.0 * w0Cos * w0Cos;
-			double w0Sin = sin(2 * M_PI / full);
-
-			double w0SqCos = sin(2 * M_PI / full);
-			w0SqCos = 2.0 * w0SqCos * w0SqCos;
-			double w0SqSin = sin(4 * M_PI / full);
-
-			Cplex w { 1, 0 };
-			Cplex w2 { 1, 0 }; // w^2
+			doRevTransform(data + 2 * third, third);
 
 			for (std::size_t n = 0; n < third; ++n) {
+				Cplex w = m_omegaTable[n * m_omegaSize / full];
+				w.i = -w.i; // invert the root
+				Cplex w2 = w; // square of w
+
+				if(2 * n * m_omegaSize / full < m_omegaSize) {
+					w2 = m_omegaTable[2 * n * m_omegaSize / full];
+					w2.i = -w2.i;
+				} else {
+					w2.r = w.r * w.r - w.i * w.i;
+					w2.i = 2.0 * w.r * w.i;
+				}
+
+				w.r = cos(2.0 * M_PI * n / full);
+								w.i = sin(2.0 * M_PI * n / full);
+
+								w2.r = cos(4.0 * M_PI * n / full);
+								w2.i = sin(4.0 * M_PI * n / full);
+
 				static const double c_sq3o2 = 0.8660254037844386l; // sqrt(3)/2
 				Cplex tmp1, tmp2, tmp3;
 
@@ -162,8 +173,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 				tmp2.r = data[n + third].r * w.r - data[n + third].i * w.i;
 				tmp2.i = data[n + third].r * w.i + data[n + third].i * w.r;
 
-				tmp3.r = data[n + 2*third].r * w2.r - data[n + 2*third].i * w2.i;
-				tmp3.i = data[n + 2*third].r * w2.i + data[n + 2*third].i * w2.r;
+				tmp3.r = data[n + 2 * third].r * w2.r - data[n + 2 * third].i * w2.i;
+				tmp3.i = data[n + 2 * third].r * w2.i + data[n + 2 * third].i * w2.r;
 
 				data[n].r = tmp1.r + tmp2.r + tmp3.r;
 				data[n].i = tmp1.i + tmp2.i + tmp3.i;
@@ -172,28 +183,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 				data[n + third].r = tmp1.r - 0.5 * (tmp2.r + tmp3.r) - c_sq3o2 * (tmp2.i - tmp3.i);
 				data[n + third].i = tmp1.i - 0.5 * (tmp2.i + tmp3.i) + c_sq3o2 * (tmp2.r - tmp3.r);
 
-				data[n + 2*third].r = tmp1.r - 0.5 * (tmp2.r + tmp3.r) + c_sq3o2 * (tmp2.i - tmp3.i);
-				data[n + 2*third].i = tmp1.i - 0.5 * (tmp2.i + tmp3.i) - c_sq3o2 * (tmp2.r - tmp3.r);
-
-				if (n % 1000 == 0) {
-					w.r = cos(2.0 * M_PI * (n+1) / full);
-					w.i = sin(2.0 * M_PI * (n+1) / full);
-
-					w2.r = cos(4.0 * M_PI * (n+1) / full);
-					w2.i = sin(4.0 * M_PI * (n+1) / full);
-				} else {
-					tmp1.r = w.r - (w.r * w0Cos + w.i * w0Sin);
-					tmp1.i = w.i - (-w.r * w0Sin + w.i * w0Cos);
-
-					w.r = tmp1.r;
-					w.i = tmp1.i;
-
-					tmp1.r = w2.r - (w2.r * w0SqCos + w2.i * w0SqSin);
-					tmp1.i = w2.i - (-w2.r * w0SqSin + w2.i * w0SqCos);
-
-					w2.r = tmp1.r;
-					w2.i = tmp1.i;
-				}
+				data[n + 2 * third].r = tmp1.r - 0.5 * (tmp2.r + tmp3.r) + c_sq3o2 * (tmp2.i - tmp3.i);
+				data[n + 2 * third].i = tmp1.i - 0.5 * (tmp2.i + tmp3.i) - c_sq3o2 * (tmp2.r - tmp3.r);
 			}
 		}
 	}

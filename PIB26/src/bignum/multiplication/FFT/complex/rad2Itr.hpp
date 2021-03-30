@@ -41,7 +41,7 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 	class rad2Itr : public ComplexFft {
 		public:
 			// NOTE: The FFT size passed to this MUST be a power of 2!
-			rad2Itr(std::size_t maxFftSize);
+			rad2Itr(Memory::SafePtr<Cplex> omegaTable, std::size_t omegaSize);
 
 			std::size_t getMaxFftSize() const;
 			std::size_t getNearestSafeLengthTo(std::size_t length) const;
@@ -49,9 +49,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 			void doFwdTransform(Memory::SafePtr<Cplex> data, std::size_t len);
 			void doRevTransform(Memory::SafePtr<Cplex> data, std::size_t len);
 		private:
-			std::size_t m_maxFftSize;
-
-			std::vector<Cplex> m_omegaTable;
+			Memory::SafePtr<Cplex> m_omegaTable;
+			std::size_t m_omegaSize;
 	};
 }
 

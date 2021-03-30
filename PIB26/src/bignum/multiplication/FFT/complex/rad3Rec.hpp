@@ -40,13 +40,17 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 	// Parameters: None.
 	class rad3Rec : public ComplexFft {
 		public:
-			rad3Rec();
+			rad3Rec(Memory::SafePtr<Cplex> omegaTable, std::size_t omegaSize);
 
+			std::size_t getMaxFftSize() const;
 			std::size_t getNearestSafeLengthTo(std::size_t length) const;
 
 			void doFwdTransform(Memory::SafePtr<Cplex> data, std::size_t len);
 			void doRevTransform(Memory::SafePtr<Cplex> data, std::size_t len);
 		private:
+			Memory::SafePtr<Cplex> m_omegaTable;
+			std::size_t m_omegaSize;
+
 			rad2Rec m_rad2Fft;
 	};
 }

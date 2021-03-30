@@ -24,23 +24,29 @@
 
 #include "rad2Itr.hpp"
 
+#include "../../../../exceptions/exceptions.hpp"
+
 #include <cmath>
+#include <cstdio>
 
 namespace SDF::Bignum::Multiplication::Fft::Complex
 {
-	rad2Itr::rad2Itr(std::size_t maxFftSize)
-		: m_maxFftSize(maxFftSize), m_omegaTable(maxFftSize)
+	rad2Itr::rad2Itr(Memory::SafePtr<Cplex> omegaTable, std::size_t omegaSize)
+		: m_omegaTable(omegaTable), m_omegaSize(omegaSize)
 	{
-		// Precompute the roots in the omega table.
-		for (std::size_t i(0); i < m_maxFftSize; ++i) {
-			m_omegaTable[i].r = cos(-2.0 * M_PI * i / m_maxFftSize);
-			m_omegaTable[i].i = sin(-2.0 * M_PI * i / m_maxFftSize);
-		}
 	}
 
 	std::size_t rad2Itr::getMaxFftSize() const
 	{
-		return m_maxFftSize;
+		// The maximum FFT size is the largest power of 2 size dividing the size of the omega table.
+		std::size_t maxSize(1);
+		std::size_t omegaSize(m_omegaSize);
+		while (!(omegaSize & 1)) {
+			omegaSize >>= 1;
+			maxSize <<= 1;
+		}
+
+		return maxSize;
 	}
 
 	std::size_t rad2Itr::getNearestSafeLengthTo(std::size_t length) const
@@ -51,15 +57,19 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 			pow2Length <<= 1;
 		}
 
-		return pow2Length;
+		if(m_omegaSize % pow2Length != 0) {
+			throw Exceptions::Exception("ERROR: Required FFT size is too large!");
+		} else {
+			return pow2Length;
+		}
 	}
 
 	void rad2Itr::doFwdTransform(Memory::SafePtr<Cplex> data, std::size_t len)
 	{
 		std::size_t step(len);
-		std::size_t omegaStep(m_maxFftSize / len); // for exploiting that even though the table stores
-																 // e^(-2piin/Nmax) for some Nmax, we have
-																 // e^(-2piin/(Nmax/d)) = e^(-2pii(dn)/Nmax).
+		std::size_t omegaStep(m_omegaSize / len); // for exploiting that even though the table stores
+																// e^(-2piin/Nmax) for some Nmax, we have
+																// e^(-2piin/(Nmax/d)) = e^(-2pii(dn)/Nmax).
 
 		while (step >= 2) {
 			// Perform the same pass as in the recursive case but over chunks of size step.
@@ -87,7 +97,7 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 	void rad2Itr::doRevTransform(Memory::SafePtr<Cplex> data, std::size_t len)
 	{
 		std::size_t step(2);
-		std::size_t omegaStep(m_maxFftSize / 2);
+		std::size_t omegaStep(m_omegaSize / 2);
 
 		while (step <= len) {
 			// Perform the same pass as in the recursive case but over chunks of size step.
@@ -97,6 +107,9 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 				for (std::size_t k = 0; k < half; ++k) {
 					Cplex w = m_omegaTable[k * omegaStep];
 					w.i = -w.i; // inverse roots are just conjugates
+
+					//w.r = cos(2.0 * M_PI * k / step);
+					//w.i = sin(2.0 * M_PI * k / step);
 
 					Cplex tmp1 { chunk[k].r, chunk[k].i };
 					Cplex tmp2 { chunk[k + half].r * w.r - chunk[k + half].i * w.i, chunk[k + half].r

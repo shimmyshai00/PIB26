@@ -27,7 +27,6 @@
 #include "../../util/ITicker.hpp"
 #include "../../util/LabelTicker.hpp"
 
-#include <iostream>
 #include <cmath>
 
 namespace SDF::Bignum
