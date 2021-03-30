@@ -5,16 +5,19 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
 ../src/util/LabelTicker.cpp \
+../src/util/printB26.cpp \
 ../src/util/timer.cpp \
 ../src/util/userInput.cpp 
 
 OBJS += \
 ./src/util/LabelTicker.o \
+./src/util/printB26.o \
 ./src/util/timer.o \
 ./src/util/userInput.o 
 
 CPP_DEPS += \
 ./src/util/LabelTicker.d \
+./src/util/printB26.d \
 ./src/util/timer.d \
 ./src/util/userInput.d 
 
