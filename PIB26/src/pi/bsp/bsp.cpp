@@ -26,6 +26,8 @@
 
 #include "../../memory/buffers/local/RAMOnly.hpp"
 
+#include "../../util/DotsTicker.hpp"
+
 #include <iostream>
 
 namespace SDF::Pi::BSP
@@ -82,7 +84,7 @@ namespace SDF::Pi::BSP
 	// Private member.
 	BSP::SmallOutput BSP::smallCompute(Memory::SafePtr<Bignum::Digit> pBufPtr,
 		Memory::SafePtr<Bignum::Digit> qBufPtr, Memory::SafePtr<Bignum::Digit> rBufPtr,
-		unsigned int a, unsigned int b)
+		unsigned int a, unsigned int b, Util::ITicker *ticker)
 	{
 		// Prepare the output buffers.
 		BSP::SmallOutput out;
@@ -101,12 +103,15 @@ namespace SDF::Pi::BSP
 			q(*out.Q, b);
 			r(*out.R, b);
 
+			ticker->setTickerCur(ticker->getTickerCur() + 1);
+			ticker->printTicker();
+
 			// NB: add more cases
 		} else {
 			std::size_t m = (a + b) / 2;
 
 			// note: these overlap with out, so we must be careful!
-			BSP::SmallOutput Lout(BSP::smallCompute(pBufPtr, qBufPtr, rBufPtr, a, m));
+			BSP::SmallOutput Lout(BSP::smallCompute(pBufPtr, qBufPtr, rBufPtr, a, m, ticker));
 
 			//std::cout << "P est: " << estimatePPrec(a, m) << " act: " << Lout.P->getDgsUsed() << std::endl;
 			//std::cout << "Q est: " << estimateQPrec(a, m) << " act: " << Lout.Q->getDgsUsed() << std::endl;
@@ -121,7 +126,7 @@ namespace SDF::Pi::BSP
 			qBufPtr += Lout.Q->getDgsUsed();
 			rBufPtr += Lout.R->getDgsUsed();
 
-			BSP::SmallOutput Rout(BSP::smallCompute(pBufPtr, qBufPtr, rBufPtr, m, b));
+			BSP::SmallOutput Rout(BSP::smallCompute(pBufPtr, qBufPtr, rBufPtr, m, b, ticker));
 
 			//std::cout << "PP est: " << estimatePPrec(m, b) << " act: " << Rout.P->getDgsUsed() << std::endl;
 			//std::cout << "QQ est: " << estimateQPrec(m, b) << " act: " << Rout.Q->getDgsUsed() << std::endl;
@@ -152,15 +157,17 @@ namespace SDF::Pi::BSP
 		Memory::SafePtr<Bignum::Digit> qWorkPtr(m_qBuffer->accessData(0));
 		Memory::SafePtr<Bignum::Digit> rWorkPtr(m_rBuffer->accessData(0));
 
-		std::cout << "Computing step " << numSteps << std::endl;
-		BSP::SmallOutput out(BSP::smallCompute(pWorkPtr, qWorkPtr, rWorkPtr, aCur, bCur));
+		Util::DotsTicker ticker("Computing step " + std::to_string(numSteps), 5);
+		ticker.setTickerMax(bCur - aCur);
+		ticker.printTicker();
+		BSP::SmallOutput out(BSP::smallCompute(pWorkPtr, qWorkPtr, rWorkPtr, aCur, bCur, &ticker));
 		P.assign(*out.P);
 		Q.assign(*out.Q);
 		R.assign(*out.R);
+		ticker.finishTicker();
 
 		// Do the remaining steps.
 		for (int i(2); i <= numSteps; ++i) {
-			std::cout << "Computing step " << (numSteps + 1 - i) << std::endl;
 			if (i == numSteps) {
 				bCur = b;
 			}
@@ -168,12 +175,19 @@ namespace SDF::Pi::BSP
 			// This is the giant merge.
 			aCur = a + ((b - a) * (i - 1)) / numSteps;
 			bCur = a + ((b - a) * i) / numSteps;
-			BSP::SmallOutput out(BSP::smallCompute(pWorkPtr, qWorkPtr, rWorkPtr, aCur, bCur));
+
+			Util::DotsTicker ticker("Computing step " + std::to_string(numSteps + 1 - i), 5);
+			ticker.setTickerMax(bCur - aCur);
+			ticker.printTicker();
+
+			BSP::SmallOutput out(BSP::smallCompute(pWorkPtr, qWorkPtr, rWorkPtr, aCur, bCur, &ticker));
 			P.mul(P, *out.Q, *m_multiplicationStrategy);
 			m_tmpBigFloat->mul(R, *out.P, *m_multiplicationStrategy);
 			P.addIp(*m_tmpBigFloat);
 			Q.mul(Q, *out.Q, *m_multiplicationStrategy);
 			R.mul(R, *out.R, *m_multiplicationStrategy);
+
+			ticker.finishTicker();
 		}
 	}
 }

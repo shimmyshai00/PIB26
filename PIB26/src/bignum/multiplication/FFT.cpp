@@ -55,7 +55,7 @@ namespace SDF::Bignum::Multiplication
 			m_smallBases[i] = pow(BASE_MINOR, i);
 		}
 
-		std::cout << "Preparing Fast Fourier Transform root tables ...";
+		std::cout << "Preparing Fast Fourier Transform root tables ..." << std::flush;
 
 		// The omega table size should always contain 1 factor of 3 for these FFTs.
 		std::size_t omegaTableSize(3);

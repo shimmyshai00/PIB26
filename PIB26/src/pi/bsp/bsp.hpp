@@ -34,6 +34,8 @@
 
 #include "../../bignum/IMultiplicationStrategy.hpp"
 
+#include "../../util/ITicker.hpp"
+
 #include <memory>
 #include <cstddef>
 
@@ -117,7 +119,7 @@ namespace SDF::Pi::BSP
 			// buffers just given above.
 			SmallOutput smallCompute(Memory::SafePtr<Bignum::Digit> pBufPtr,
 				Memory::SafePtr<Bignum::Digit> qBufPtr, Memory::SafePtr<Bignum::Digit> rBufPtr,
-				unsigned int a, unsigned int b);
+				unsigned int a, unsigned int b, Util::ITicker *ticker);
 
 			// This "giant sum" routine performs the final few series passes in floating point at full
 			// precision using classical summation (i.e. breaking the series up linearly). This is
