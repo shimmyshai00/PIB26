@@ -30,7 +30,7 @@
 
 #include "Cplex.hpp"
 
-#include "rad4Rec.hpp"
+#include "rad2Rec.hpp"
 
 #include <cstddef>
 
@@ -51,7 +51,7 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 			Memory::SafePtr<Cplex> m_omegaTable;
 			std::size_t m_omegaSize;
 
-			rad4Rec m_rad4Fft;
+			rad2Rec m_rad2Fft;
 	};
 }
 

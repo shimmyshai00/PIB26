@@ -34,10 +34,7 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 {
 	rad2Rec::rad2Rec(Memory::SafePtr<Cplex> omegaTable, std::size_t omegaSize)
 		: m_omegaTable(omegaTable), m_omegaSize(omegaSize),
-		  m_iterativeFftThreshold(g_cacheSize / (2 * sizeof(Cplex))), // try to fit whole iterative
-		                                                              // FFT - table and data - into
-		                                                              // cache
-		  m_iterativeFft(omegaTable, omegaSize)
+		  m_rad4Fft(omegaTable, omegaSize)
 	{
 	}
 
@@ -73,8 +70,11 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 	{
 		// The forward transform is done as a decimation-in-frequency (DIF) version.
 		// The DIF version in a sense is just "built backwards" from the DIT version.
-		if (len < m_iterativeFftThreshold) {
-			m_iterativeFft.doFwdTransform(data, len);
+		if (len & 0x5555555555555555UL) { // quick check for even powers of 2 NB: needs recalibrating
+			                               // for 32-bit machines
+			// Right now, we only use the radix-2 to break an odd power of 2 so we can then use the
+			// radix-4.
+			m_rad4Fft.doFwdTransform(data, len);
 		} else {
 			std::size_t half(len >> 1);
 			std::size_t full(len);
@@ -106,8 +106,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 		// FFT useless as a frequency analyzer - if one wants to recycle this code in another program
 		// where it has that use, one will need to adapt the implementation or fashion a suitable
 		// frontend that will recursively sort the data.
-		if (len < m_iterativeFftThreshold) {
-			m_iterativeFft.doRevTransform(data, len);
+		if (len & 0x5555555555555555UL) {
+			m_rad4Fft.doRevTransform(data, len);
 		} else {
 			// Do the recursion:
 			//    X_k =                sum_{m=0...N/2-1} x_{2m} e^(-2piimk/(N/2))

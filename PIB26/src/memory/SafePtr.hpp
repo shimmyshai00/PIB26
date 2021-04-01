@@ -87,6 +87,14 @@ namespace SDF::Memory
 				return *m_ptr;
 			}
 
+			// Function:  operator->
+			// Purpose:   Structure access.
+			// Arguments: None.
+			// Returns:   The structure access pointer.
+			T* operator->() const {
+				return m_ptr;
+			}
+
 			// Function:  operator[]
 			// Purpose:   Indexes the safe pointer.
 			// Arguments: idx - The index to get.

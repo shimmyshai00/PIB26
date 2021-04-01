@@ -1,9 +1,9 @@
 /*
- * PIB26 version 0.0.2
+ * PIB26 version 0.0.1
  * (C) 2020-2021 Shimrra Shai.
  * 
- * File:      rad2.hpp
- * Timestamp: Mar 23, 2021
+ * File:      rad4Itr.hpp
+ * Timestamp: Apr 1, 2021
  *
  */
 
@@ -21,9 +21,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-
-#ifndef SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_RAD2REC_HPP_
-#define SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_RAD2REC_HPP_
+#ifndef SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_RAD4ITR_HPP_
+#define SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_RAD4ITR_HPP_
 
 #include "ComplexFft.hpp"
 
@@ -31,17 +30,17 @@
 
 #include "Cplex.hpp"
 
-#include "rad4Rec.hpp"
-
 #include <cstddef>
+#include <vector>
 
 namespace SDF::Bignum::Multiplication::Fft::Complex {
-	// Class:      rad2Rec
-	// Purpose:    Wraps the radix-2 recursive complex FFT.
+	// Class:      rad4Itr
+	// Purpose:    Wraps the radix-4 iterative complex FFT.
 	// Parameters: None.
-	class rad2Rec : public ComplexFft {
+	class rad4Itr : public ComplexFft {
 		public:
-			rad2Rec(Memory::SafePtr<Cplex> omegaTable, std::size_t omegaSize);
+			// NOTE: The FFT size passed to this MUST be a power of 4!
+			rad4Itr(Memory::SafePtr<Cplex> omegaTable, std::size_t omegaSize);
 
 			std::size_t getMaxFftSize() const;
 			std::size_t getNearestSafeLengthTo(std::size_t length) const;
@@ -51,9 +50,7 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 		private:
 			Memory::SafePtr<Cplex> m_omegaTable;
 			std::size_t m_omegaSize;
-
-			rad4Rec m_rad4Fft;
 	};
 }
 
-#endif /* SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_RAD2REC_HPP_ */
+#endif /* SRC_BIGNUM_MULTIPLICATION_FFT_COMPLEX_RAD4ITR_HPP_ */

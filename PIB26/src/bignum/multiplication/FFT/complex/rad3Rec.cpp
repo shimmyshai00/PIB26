@@ -32,7 +32,7 @@
 namespace SDF::Bignum::Multiplication::Fft::Complex
 {
 	rad3Rec::rad3Rec(Memory::SafePtr<Cplex> omegaTable, std::size_t omegaSize)
-		: m_omegaTable(omegaTable), m_omegaSize(omegaSize), m_rad4Fft(omegaTable, omegaSize)
+		: m_omegaTable(omegaTable), m_omegaSize(omegaSize), m_rad2Fft(omegaTable, omegaSize)
 	{
 	}
 
@@ -82,8 +82,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 	void rad3Rec::doFwdTransform(Memory::SafePtr<Cplex> data, std::size_t len)
 	{
 		if (len % 3 != 0) {
-			// Switch to radix-4 transform.
-			m_rad4Fft.doFwdTransform(data, len);
+			// Switch to radix-2 transform.
+			m_rad2Fft.doFwdTransform(data, len);
 		} else {
 			std::size_t third(len / 3);
 			std::size_t full(len);
@@ -135,8 +135,8 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 	void rad3Rec::doRevTransform(Memory::SafePtr<Cplex> data, std::size_t len)
 	{
 		if (len % 3 != 0) {
-			// Switch to radix-4 transform.
-			m_rad4Fft.doRevTransform(data, len);
+			// Switch to radix-2 transform.
+			m_rad2Fft.doRevTransform(data, len);
 		} else {
 			std::size_t third(len / 3);
 			std::size_t full(len);

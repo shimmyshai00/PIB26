@@ -43,12 +43,12 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 
 	std::size_t rad4Rec::getMaxFftSize() const
 	{
-		// The maximum FFT size is the largest power of 2 size dividing the size of the omega table.
+		// The maximum FFT size is the largest power of 4 size dividing the size of the omega table.
 		std::size_t maxSize(1);
 		std::size_t omegaSize(m_omegaSize);
 		while (!(omegaSize & 1)) {
-			omegaSize >>= 1;
-			maxSize <<= 1;
+			omegaSize >>= 2;
+			maxSize <<= 2;
 		}
 
 		return maxSize;
@@ -56,17 +56,16 @@ namespace SDF::Bignum::Multiplication::Fft::Complex
 
 	std::size_t rad4Rec::getNearestSafeLengthTo(std::size_t length) const
 	{
-		// Get the smallest power of two just larger than this length. Since we switch to radix-2
-		// iterative at the end, no need to check for divisibility by 4.
-		std::size_t pow2Length(1);
-		while (pow2Length < length) {
-			pow2Length <<= 1;
+		// Get the smallest power of 4 just larger than this length.
+		std::size_t pow4Length(1);
+		while (pow4Length < length) {
+			pow4Length <<= 2;
 		}
 
-		if (m_omegaSize % pow2Length != 0) {
+		if (m_omegaSize % pow4Length != 0) {
 			throw Exceptions::Exception("ERROR: Required FFT size is too large!");
 		} else {
-			return pow2Length;
+			return pow4Length;
 		}
 	}
 

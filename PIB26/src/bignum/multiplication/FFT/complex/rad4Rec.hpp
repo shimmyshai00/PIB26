@@ -30,7 +30,7 @@
 
 #include "Cplex.hpp"
 
-#include "rad2Itr.hpp"
+#include "rad4Itr.hpp"
 
 #include <cstddef>
 
@@ -52,7 +52,7 @@ namespace SDF::Bignum::Multiplication::Fft::Complex {
 			std::size_t m_omegaSize;
 
 			std::size_t m_iterativeFftThreshold;
-			rad2Itr m_iterativeFft;
+			rad4Itr m_iterativeFft;
 	};
 }
 
