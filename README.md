@@ -17,10 +17,7 @@ instead of
 Current status
 ==============
 
-The current program is in an extremely immature stage - at version 0.0.1 it is still considered mostly a naive program, and doesn't support the base-26 calculation yet - only supporting decimal like other programs. It is very slow by comparison and nowhere near the league of the programs mentioned, taking a full 16.7 seconds to compute 1 million digits (1,000,000) of decimal pi on a decent processor - Core i3-8100, on a single core. But - right now, it works - and thus provides a ready base for continued improvement and optimization. We also invite feedback and contributions as to how it can be made better.
-
-NEW (UE+1616.63 Ms [2021-03-24]): The program now can compute 1M in under 9s.
-NEW (UE+1616.63 Ms [2021-03-25]): The program can now do 1M in under 5s and has limit of 32M! Am considering incrementing to version 0.0.2 after having been just 2 days!
+As of version 0.0.2, the current program is still at a relatively immature stage, however it now performs its computations in base-26 as it is was intended to, meaning that, unlike other pi programs out there, your pi will come out as letters instead of numbers. This is what we want! It is, however, not yet ready to call as a properly mature program, for which we've set as a goal having higher speed and supporting multi-threading capability. Note that in comparing this program against other programs, one can/should no longer simply compare the computation times for the number of digits directly, because a base-26 run contains more information per digit: instead, you should compare to a decimal run of a factor of log_10(26) ~ 1.415 times longer. On my Core i3-8100 machine, 706,727 digits (informational content equivalent to 1,000,000 decimal digits) takes on the order of 4600 ms to compute, and the goal is to improve speed by another factor of 4 for the 0.1.0 production release. Memory optimizations are another area that needs work, especially now with the introduction of the root tables to improve FFT performance and also to combat rounding error, which has come with somewhat of a memory penalty.
 
 Building
 ========
