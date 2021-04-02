@@ -59,7 +59,7 @@ namespace SDF::Bignum::Multiplication
 
 		// The omega table size should always contain 1 factor of 3 for these FFTs.
 		std::size_t omegaTableSize(3);
-		while(omegaTableSize < expandedMaxProdSize) {
+		while (omegaTableSize < expandedMaxProdSize) {
 			omegaTableSize <<= 1;
 		}
 
@@ -71,7 +71,10 @@ namespace SDF::Bignum::Multiplication
 		m_fft = std::make_unique<Fft::Complex::rad3Rec>(m_omegaBuffer->accessData(0), omegaTableSize);
 
 		// Create the FFT buffers.
-		m_fftBufferSize = m_fft->getNearestSafeLengthTo(expandedMaxProdSize);
+		// Halve the size to exploit the so-called *right angle convolution* (see other methods
+		// below).
+		m_fftBufferSize = m_fft->getNearestSafeLengthTo(
+			(expandedMaxProdSize / 2) + (expandedMaxProdSize % 2));
 
 		m_num1FFTBuffer = std::make_unique<Memory::Buffers::Local::RAMOnly<Fft::Complex::Cplex>>(
 			m_fftBufferSize);
@@ -223,7 +226,14 @@ namespace SDF::Bignum::Multiplication
 		// directly. One should pass fftBase == BASE_MINOR^smallsPerFftElement; both are calculated by
 		// getFFTBase.
 		if (smallsPerFftElement == DIGS_PER_DIG) {
-			// TBA: use right-angle convolution to save half the memory and transform length.
+			// When loading the FFT buffer, we use the so-called "right-angle" convolution, which
+			// means we premultiply all inputs by powers of i^(1/N) (i is the unit imaginary number).
+			// This, in effect, is a type of discrete weighted transform (DWT), which we can use to
+			// cause the elements of the FFT output to "fold over" so that the first half of the
+			// product sequence is in the real part of the output, and the second half in the imaginary
+			// part. This allows us to save a factor of 2 on transform size, thus both memory and
+			// time. While this doesn't affect this part of the multiply (we factor this step out into
+			// another method below), it does mean we have to take care when extracting the product.
 			for (std::size_t i(0); i < numLen; ++i) {
 				fftBuffer[i] = { num[i], 0.0 };
 			}
@@ -262,6 +272,19 @@ namespace SDF::Bignum::Multiplication
 		}
 	}
 
+	void FFT::applyWeight(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize)
+	{
+		// Apply the right-angle weight to the input buffer sequence.
+		for (std::size_t i(0); i < fftSize; ++i) {
+			// Assumes the input sequence is purely real-valued.
+			// NB: it might help tp precompute these weights
+			Fft::Complex::Cplex t { fftBuffer[i].r * cos(M_PI * i / (2 * fftSize)), fftBuffer[i].r
+				* sin(M_PI * i / (2 * fftSize)) };
+
+			fftBuffer[i] = t;
+		}
+	}
+
 	void FFT::convolute(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer1,
 		Memory::SafePtr<Fft::Complex::Cplex> fftBuffer2, std::size_t bufferLen)
 	{
@@ -274,6 +297,18 @@ namespace SDF::Bignum::Multiplication
 		}
 	}
 
+	void FFT::removeWeight(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize)
+	{
+		for (std::size_t i(0); i < fftSize; ++i) {
+			// now can no longer assume real-valued
+			Fft::Complex::Cplex w { cos(-M_PI * i / (2 * fftSize)), sin(-M_PI * i / (2 * fftSize)) };
+			Fft::Complex::Cplex t { fftBuffer[i].r * w.r - fftBuffer[i].i * w.i, fftBuffer[i].r * w.i
+				+ fftBuffer[i].i * w.r };
+
+			fftBuffer[i] = t;
+		}
+	}
+
 	void FFT::extractProduct(Memory::SafePtr<Digit> digitBuffer, std::size_t digitsToGet,
 		Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize,
 		std::size_t smallsPerFftElement)
@@ -282,7 +317,12 @@ namespace SDF::Bignum::Multiplication
 			double carry(0);
 			for (std::size_t i(0); i < digitsToGet; ++i) {
 				// divide by the FFT size; the FFT leaves the product terms multiplied by it
-				double tmp = floor((fftBuffer[i].r / fftSize) + 0.5);
+				double tmp(0.0);
+				if (i < fftSize) { // unwrap the right-angle convolution
+					tmp = floor((fftBuffer[i].r / fftSize) + 0.5);
+				} else {
+					tmp = floor((fftBuffer[i - fftSize].i / fftSize) + 0.5);
+				}
 
 				// release carries
 				tmp += carry;
@@ -297,9 +337,14 @@ namespace SDF::Bignum::Multiplication
 			TwoDigit smallDigitBuffer(0);
 			std::size_t smallsInBuffer(0);
 			std::size_t outBufIdx(0);
-			for (std::size_t i(0); (i < fftSize) && (outBufIdx < digitsToGet); ++i) {
+			for (std::size_t i(0); (i < (2 * fftSize)) && (outBufIdx < digitsToGet); ++i) {
 				// divide by the FFT size; the FFT leaves the product terms multiplied by it
-				double tmp = floor((fftBuffer[i].r / fftSize) + 0.5);
+				double tmp(0.0);
+				if (i < fftSize) { // unwrap the right-angle convolution
+					tmp = floor((fftBuffer[i].r / fftSize) + 0.5);
+				} else {
+					tmp = floor((fftBuffer[i - fftSize].i / fftSize) + 0.5);
+				}
 
 				// release carries
 				tmp += carry;
@@ -356,20 +401,25 @@ namespace SDF::Bignum::Multiplication
 	void FFT::mulCore(Memory::SafePtr<Digit> a, std::size_t aLen, Memory::SafePtr<Digit> b,
 		std::size_t bLen)
 	{
-		// Load the numbers into the buffers.
+		// Load the numbers into the buffers. Because we are using the right-angle convolution,
+		// we should use the larger factor as the buffer size.
 		std::size_t prodSize(aLen + bLen);
+		std::size_t largerSize(std::max(aLen, bLen));
 		std::size_t smallsPerElement(calcSmallsPerElement(prodSize));
-		std::size_t expandedProdSize = (prodSize * DIGS_PER_DIG) / smallsPerElement;
-		if ((prodSize * DIGS_PER_DIG) % smallsPerElement) {
-			++expandedProdSize; // round up
+		std::size_t expandedLargerSize = (largerSize * DIGS_PER_DIG) / smallsPerElement;
+		if ((largerSize * DIGS_PER_DIG) % smallsPerElement) {
+			++expandedLargerSize; // round up
 		}
-		std::size_t safeSize(m_fft->getNearestSafeLengthTo(expandedProdSize));
+		std::size_t safeSize(m_fft->getNearestSafeLengthTo(expandedLargerSize));
 
 		Memory::SafePtr<Fft::Complex::Cplex> num1BufPtr(m_num1FFTBuffer->accessData(0));
 		Memory::SafePtr<Fft::Complex::Cplex> num2BufPtr(m_num2FFTBuffer->accessData(0));
 
 		loadBuffer(num1BufPtr, safeSize, a, aLen, smallsPerElement);
 		loadBuffer(num2BufPtr, safeSize, b, bLen, smallsPerElement);
+
+		applyWeight(num1BufPtr, safeSize);
+		applyWeight(num2BufPtr, safeSize);
 
 		// Do the FFT multiplication itself.
 		m_fft->doFwdTransform(num1BufPtr, safeSize);
@@ -380,6 +430,8 @@ namespace SDF::Bignum::Multiplication
 		m_fft->doRevTransform(num1BufPtr, safeSize);
 
 		// Unspool the result and release the carries.
+		removeWeight(num1BufPtr, safeSize);
+
 		Memory::SafePtr<Digit> resultPtr(m_productDigits.accessData(0));
 		extractProduct(resultPtr, prodSize, num1BufPtr, safeSize, smallsPerElement);
 	}
@@ -389,19 +441,23 @@ namespace SDF::Bignum::Multiplication
 		// Can save a transform when squaring
 		std::size_t prodSize(aLen << 1);
 		std::size_t smallsPerElement(calcSmallsPerElement(prodSize));
-		std::size_t expandedProdSize = (prodSize * DIGS_PER_DIG) / smallsPerElement;
-		if ((prodSize * DIGS_PER_DIG) % smallsPerElement) {
-			++expandedProdSize; // round up
+		std::size_t expandedASize = (aLen * DIGS_PER_DIG) / smallsPerElement;
+		if ((aLen * DIGS_PER_DIG) % smallsPerElement) {
+			++expandedASize; // round up
 		}
-		std::size_t safeSize(m_fft->getNearestSafeLengthTo(expandedProdSize));
+		std::size_t safeSize(m_fft->getNearestSafeLengthTo(expandedASize));
 
 		Memory::SafePtr<Fft::Complex::Cplex> num1BufPtr(m_num1FFTBuffer->accessData(0));
 
 		loadBuffer(num1BufPtr, safeSize, a, aLen, smallsPerElement);
 
+		applyWeight(num1BufPtr, safeSize);
+
 		m_fft->doFwdTransform(num1BufPtr, safeSize);
 		convolute(num1BufPtr, num1BufPtr, safeSize);
 		m_fft->doRevTransform(num1BufPtr, safeSize);
+
+		removeWeight(num1BufPtr, safeSize);
 
 		Memory::SafePtr<Digit> resultPtr(m_productDigits.accessData(0));
 		extractProduct(resultPtr, prodSize, num1BufPtr, safeSize, smallsPerElement);

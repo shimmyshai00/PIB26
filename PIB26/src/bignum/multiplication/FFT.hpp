@@ -91,8 +91,10 @@ namespace SDF::Bignum::Multiplication
 
 			void loadBuffer(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t bufferLen,
 				Memory::SafePtr<Digit> num, std::size_t numLen, std::size_t smallsPerFftElement);
+			void applyWeight(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize);
 			void convolute(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer1,
 				Memory::SafePtr<Fft::Complex::Cplex> fftBuffer2, std::size_t bufferLen);
+			void removeWeight(Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize);
 			void extractProduct(Memory::SafePtr<Digit> digitBuffer, std::size_t digitsToGet,
 				Memory::SafePtr<Fft::Complex::Cplex> fftBuffer, std::size_t fftSize,
 				std::size_t smallsPerFftElement);

@@ -26,6 +26,7 @@
 #include "bignum/multiplication/SmallKaratsuba.hpp"
 #include "bignum/multiplication/FFT.hpp"
 #include "bignum/multiplication/FlexMul3.hpp"
+#include "bignum/multiplication/FlexMul2.hpp"
 
 #include "bignum/BigFloat.hpp"
 #include "bignum/BigInt.hpp"
@@ -57,7 +58,7 @@ int main(int argc, char **argv)
 		std::cout << std::endl;
 
 		std::size_t numDigits = Util::getUserNumericInput("Enter number of digits to compute", 100,
-			32000000);
+			64000000);
 		std::cout << std::endl;
 
 		/*
@@ -80,7 +81,7 @@ int main(int argc, char **argv)
 		Bignum::Multiplication::FFT largeStrategy(
 			std::max<std::size_t>(16384, 2 * numDigits / Bignum::DIGS_PER_DIG) + 16);
 		Bignum::Multiplication::FlexMul3 flexStrategy(&smallStrategy, &medStrategy, &largeStrategy,
-			128, 1024);
+			8, 56);
 		Pi::BSP::Chudnovsky chudnovsky(&flexStrategy);
 
 		std::cout << "Done." << std::endl;
